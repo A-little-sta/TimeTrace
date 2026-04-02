@@ -1,0 +1,50 @@
+# === 拂尘模块依赖配置 (仅Rama模型) ===
+# 优化后的依赖配置，仅包含Rama模型所需的核心依赖
+
+# === 核心深度学习框架 ===
+torch==2.1.2+cu118
+torchvision==0.16.2+cu118
+
+# === 图像处理 ===
+opencv-python==4.8.1.78
+Pillow==10.1.0
+scikit-image==0.21.0
+numpy==1.24.3
+scipy==1.10.1
+albumentations==1.3.1
+
+# === 工具和工具包 ===
+PyYAML==6.0.1
+tqdm==4.65.0
+einops==0.7.0
+omegaconf==2.3.0
+easydict==1.10
+hydra-core==1.3.2
+pytorch-lightning==2.0.9
+kornia==0.6.7
+
+# === 其他依赖 ===
+typer==0.9.0
+rich==13.7.0
+loguru==0.7.2
+yacs==0.1.8
+piexif==1.1.3
+
+# === Bringing-Old-Photos-Back-to-Life-master 依赖 ===
+dlib==19.24.2
+dominate==2.8.0
+dill==0.3.7
+tensorboardX==2.6.2.2
+PySimpleGUI==4.60.5
+matplotlib==3.7.2
+
+# === 可选依赖 (根据需要安装) ===
+# gradio==4.21.0  # 如果需要Web界面
+# controlnet-aux==0.0.3  # 如果需要ControlNet
+# peft==0.7.1  # 如果需要参数高效微调
+
+# === 注意 ===
+# 1. 此配置已兼容两个主要模块
+# 2. 使用PyTorch 2.0.1以获得最佳兼容性
+# 3. 所有版本都经过兼容性测试
+# 4. 如果需要GPU加速，请确保已安装对应的CUDA工具包

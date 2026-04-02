@@ -1,0 +1,29 @@
+# UHDM 降噪修复运行依赖
+# 仅包含运行所需的依赖包，不包含训练相关依赖
+
+# 深度学习框架
+torch==1.10.1
+torchvision==0.11.2
+
+# 图像处理
+opencv-python==4.5.5.64
+Pillow==9.0.1
+scikit-image==0.19.2
+
+# 数值计算
+numpy==1.21.5
+
+# 进度条
+tqdm==4.63.0
+
+# 图像质量评估
+lpips==0.1.4
+
+# 配置处理
+PyYAML==6.0
+
+# 注意：tensorboardX 主要用于训练时的可视化，运行时可选择性安装
+# tensorboardX==2.2
+
+# 可选：如果需要使用GPU加速，请确保已安装对应的CUDA工具包
+# cudatoolkit=11.3.1

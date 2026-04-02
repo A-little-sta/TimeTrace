@@ -1,0 +1,28 @@
+{
+  "name": "timetrace-(岁月笺影)",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "@fortawesome/fontawesome-svg-core": "^7.1.0",
+    "@fortawesome/free-regular-svg-icons": "^7.1.0",
+    "@fortawesome/free-solid-svg-icons": "^7.1.0",
+    "@fortawesome/vue-fontawesome": "^3.1.3",
+    "axios": "^1.13.2",
+    "pinia": "2.1.7",
+    "vue": "3.4.19",
+    "vue-demi": "0.14.7",
+    "vue-router": "4.2.5"
+  },
+  "devDependencies": {
+    "@types/node": "^22.14.0",
+    "@vitejs/plugin-vue": "^5.0.0",
+    "typescript": "~5.8.2",
+    "vite": "^5.0.0"
+  }
+}

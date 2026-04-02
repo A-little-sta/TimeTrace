@@ -1,0 +1,13 @@
+{
+    "framework": "pytorch",
+
+    "task": "image-colorization",
+
+    "pipeline": {
+        "type": "ddcolor-image-colorization"
+    },
+
+    "model": {
+        "type": "ddcolor"
+    }
+}

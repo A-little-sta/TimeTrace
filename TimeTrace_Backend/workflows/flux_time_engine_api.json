@@ -1,0 +1,250 @@
+{
+  "6": {
+    "inputs": {
+      "text": [
+        "196",
+        0
+      ],
+      "clip": [
+        "223",
+        0
+      ]
+    },
+    "class_type": "CLIPTextEncode",
+    "_meta": {
+      "title": "CLIP文本编码"
+    }
+  },
+  "8": {
+    "inputs": {
+      "samples": [
+        "31",
+        0
+      ],
+      "vae": [
+        "39",
+        0
+      ]
+    },
+    "class_type": "VAEDecode",
+    "_meta": {
+      "title": "VAE解码"
+    }
+  },
+  "31": {
+    "inputs": {
+      "seed": 382883499604554,
+      "steps": 15,
+      "cfg": 1,
+      "sampler_name": "er_sde",
+      "scheduler": "beta",
+      "denoise": 1,
+      "model": [
+        "224",
+        0
+      ],
+      "positive": [
+        "35",
+        0
+      ],
+      "negative": [
+        "135",
+        0
+      ],
+      "latent_image": [
+        "198",
+        0
+      ]
+    },
+    "class_type": "KSampler",
+    "_meta": {
+      "title": "K采样器"
+    }
+  },
+  "35": {
+    "inputs": {
+      "guidance": 4.3,
+      "conditioning": [
+        "177",
+        0
+      ]
+    },
+    "class_type": "FluxGuidance",
+    "_meta": {
+      "title": "Flux引导"
+    }
+  },
+  "39": {
+    "inputs": {
+      "vae_name": "ae.safetensors"
+    },
+    "class_type": "VAELoader",
+    "_meta": {
+      "title": "加载VAE"
+    }
+  },
+  "42": {
+    "inputs": {
+      "image": [
+        "191",
+        0
+      ]
+    },
+    "class_type": "FluxKontextImageScale",
+    "_meta": {
+      "title": "图像缩放为FluxKontext"
+    }
+  },
+  "124": {
+    "inputs": {
+      "pixels": [
+        "42",
+        0
+      ],
+      "vae": [
+        "39",
+        0
+      ]
+    },
+    "class_type": "VAEEncode",
+    "_meta": {
+      "title": "VAE编码"
+    }
+  },
+  "135": {
+    "inputs": {
+      "conditioning": [
+        "6",
+        0
+      ]
+    },
+    "class_type": "ConditioningZeroOut",
+    "_meta": {
+      "title": "条件零化"
+    }
+  },
+  "136": {
+    "inputs": {
+      "filename_prefix": "pl-kontext-dev",
+      "images": [
+        "216",
+        0
+      ]
+    },
+    "class_type": "SaveImage",
+    "_meta": {
+      "title": "保存图像"
+    }
+  },
+  "177": {
+    "inputs": {
+      "conditioning": [
+        "6",
+        0
+      ],
+      "latent": [
+        "124",
+        0
+      ]
+    },
+    "class_type": "ReferenceLatent",
+    "_meta": {
+      "title": "参考Latent"
+    }
+  },
+  "190": {
+    "inputs": {
+      "text_0": "(Masterpiece, top quality, 8k resolution:1.2), Pro-level studio photography, shot on Canon EOS R5, 85mm lens. Vibrant and rich color grading, brilliant contrast, Authentic film look, professional lighting.\n\nSubject: looking at camera. Skin Texture: (Maintain original facial features:1.3), flawless and clean complexion, Hyper-realistic pores, natural healthy skin tone, (sharp focus on eyes and facial features:1.3), highly detailed hair, no blur.\n\nCRITICAL RESTORATION: (Clean, brand new, high-quality clothing:1.4), (rich and vibrant clothing colors:1.2), (remove all white scratches and dust spots:1.5), (remove noise:1.3), (fine-grained texture:1.2). The clothing is well-tailored, smooth and premium fabric, completely free of any damage, cracks, or white marks. Background: Softly blurred natural background, highly detailed environment texture, vibrant atmosphere.",
+      "text": [
+        "196",
+        0
+      ]
+    },
+    "class_type": "ShowText|pysssss",
+    "_meta": {
+      "title": "Show Text 🐍"
+    }
+  },
+  "191": {
+    "inputs": {
+      "image": "Snipaste_2026-02-11_14-51-04.png"
+    },
+    "class_type": "LoadImage",
+    "_meta": {
+      "title": "加载图像"
+    }
+  },
+  "196": {
+    "inputs": {
+      "text": "(Masterpiece, top quality, 8k resolution:1.2), Pro-level studio photography, shot on Canon EOS R5, 85mm lens. Vibrant and rich color grading, brilliant contrast, Authentic film look, professional lighting.\n\nSubject: looking at camera. Skin Texture: (Maintain original facial features:1.3), flawless and clean complexion, Hyper-realistic pores, natural healthy skin tone, (sharp focus on eyes and facial features:1.3), highly detailed hair, no blur.\n\nCRITICAL RESTORATION: (Clean, brand new, high-quality clothing:1.4), (rich and vibrant clothing colors:1.2), (remove all white scratches and dust spots:1.5), (remove noise:1.3), (fine-grained texture:1.2). The clothing is well-tailored, smooth and premium fabric, completely free of any damage, cracks, or white marks. Background: Softly blurred natural background, highly detailed environment texture, vibrant atmosphere."
+    },
+    "class_type": "Text Multiline",
+    "_meta": {
+      "title": "Text Multiline"
+    }
+  },
+  "198": {
+    "inputs": {
+      "amount": 2,
+      "samples": [
+        "124",
+        0
+      ]
+    },
+    "class_type": "RepeatLatentBatch",
+    "_meta": {
+      "title": "复制Latent批次"
+    }
+  },
+  "216": {
+    "inputs": {
+      "any_01": [
+        "8",
+        0
+      ]
+    },
+    "class_type": "Any Switch (rgthree)",
+    "_meta": {
+      "title": "Any Switch (rgthree)"
+    }
+  },
+  "222": {
+    "inputs": {
+      "unet_name": "flux1-kontext-dev-Q4_K_S.gguf"
+    },
+    "class_type": "UnetLoaderGGUF",
+    "_meta": {
+      "title": "Unet Loader (GGUF)"
+    }
+  },
+  "223": {
+    "inputs": {
+      "clip_name1": "clip_l.safetensors",
+      "clip_name2": "t5-v1_1-xxl-encoder-Q3_K_M.gguf",
+      "type": "flux"
+    },
+    "class_type": "DualCLIPLoaderGGUF",
+    "_meta": {
+      "title": "DualCLIPLoader (GGUF)"
+    }
+  },
+  "224": {
+    "inputs": {
+      "lora_name": "restorationOfOldPhotos_v10.safetensors",
+      "strength_model": 1,
+      "strength_clip": 1,
+      "model": [
+        "222",
+        0
+      ],
+      "clip": [
+        "223",
+        0
+      ]
+    },
+    "class_type": "LoraLoader",
+    "_meta": {
+      "title": "加载LoRA"
+    }
+  }
+}

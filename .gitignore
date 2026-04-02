@@ -1,0 +1,170 @@
+# ==========================================
+# 岁月笺影专属全局 .gitignore 文件
+# 专门为包含多个AI模块的复杂项目定制
+# ==========================================
+
+# ==========================================
+# 1. 核心大杀器：全局拦截所有 AI 模型文件
+# ==========================================
+*.pt
+*.pth
+*.ckpt
+*.safetensors
+*.bin
+*.onnx
+*.pb
+*.tflite
+*.h5
+*.tar
+*.gz
+*.zip
+*.7z
+*.rar
+*.tar.gz
+*.tar.bz2
+*.tar.xz
+
+# 模型文件夹（根据扫描结果添加）
+models/
+weights/
+checkpoints/
+pretrained_models/
+pretrained_weights/
+pretrain_model/
+big-lama/
+stable-diffusion-2-1-base/
+
+# 特定模块的模型文件夹
+Module_Clarity/HYPIR/stable-diffusion-2-1-base/
+Module_Dustless/lama/big-lama/
+Module_Dustless/UHDM-main/pretrain_model/
+Module_TrueFace/gfpgan/weights/
+Module_TrueFace/experiments/pretrained_models/
+Module_Colorize/modelscope/
+Module_LivePortrait/pretrained_weights/
+Module_voiceclone/GPT-SoVITS-v2pro/f5_tts/pretrained_models/
+Module_voiceclone/models/ChatTTS/asset/
+
+# ==========================================
+# 2. 忽略环境与机密信息
+# ==========================================
+.venv/
+venv/
+env/
+.env
+*.env
+.env.local
+.env.production
+.env.development
+
+# 数据库相关
+*.db
+*.sqlite
+*.sqlite3
+
+# ==========================================
+# 3. 忽略 Python 运行时产生的缓存垃圾
+# ==========================================
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+share/python-wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+
+# ==========================================
+# 4. 忽略本地测试产生的数据和日志
+# ==========================================
+logs/
+*.log
+static/results/
+static/uploads/
+outputs/
+temp/
+tmp/
+*.tmp
+*.temp
+
+# 缓存文件
+.cache/
+.cache/
+nohup.out
+
+# ==========================================
+# 5. 忽略操作系统和开发工具自动生成的文件
+# ==========================================
+.idea/
+.vscode/
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# 编辑器文件
+*.swp
+*.swo
+*~
+
+# ==========================================
+# 6. 忽略前端构建产物
+# ==========================================
+dist/
+build/
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# ==========================================
+# 7. 忽略临时文件和测试文件
+# ==========================================
+test/
+tests/
+*.test
+*.spec
+
+# ==========================================
+# 8. 忽略特定模块的临时文件
+# ==========================================
+Module_Dustless/Bringing-Old-Photos-Back-to-Life-master/Global/checkpoints/
+Module_Dustless/UHDM-main/utils/weights/
+Module_LivePortrait/src/utils/dependencies/XPose/models/UniPose/ops/build/
+
+# ==========================================
+# 9. 忽略其他压缩包和备份文件
+# ==========================================
+*.bak
+*.backup
+*.old
+*.orig
+*.rej
+
+# ==========================================
+# 10. 忽略特定文件夹（根据项目结构添加）
+# ==========================================
+新建文件夹/
+Module_voiceclone/GPT-SoVITS-v2pro/tools/asr/models/
+
+# ==========================================
+# 重要提醒：
+# 1. 如果之前已经提交过模型文件，需要执行以下命令清空缓存：
+#    git rm -r --cached .
+#    git add .
+#    git commit -m "应用全局过滤规则，自动排除所有模型文件"
+#    git push origin master
+# ==========================================

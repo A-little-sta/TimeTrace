@@ -1,0 +1,28 @@
+# FastAPI 框架相关
+fastapi==0.104.0
+uvicorn==0.24.0
+python-multipart==0.0.6
+
+# 数据库相关
+sqlalchemy==2.0.23
+pydantic==2.4.2
+pydantic-settings==2.0.3
+python-dotenv==1.0.0
+pymysql==1.0.2
+
+# Celery 异步任务
+celery==5.3.6
+redis==5.0.1
+
+# 图像处理（如果需要）
+pillow==10.1.0
+
+# 工具库
+python-magic==0.4.27
+
+
+
+# 认证相关
+passlib==1.7.4
+python-jose==3.3.0
+python-multipart==0.0.6

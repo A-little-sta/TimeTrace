@@ -1,0 +1,19 @@
+# === 核心 AI 框架 ===
+torch==2.6.0
+torchvision==0.21.0
+accelerate==1.4.0        # 显存优化，推理也需要
+diffusers==0.32.2        # HYPIR 的底层框架 (Stable Diffusion)
+transformers==4.49.0     # 文本编码器依赖
+open_clip_torch==2.31.0  # SD 2.1 必需的编码器
+timm==1.0.15             # 计算机视觉骨干网络 (HYPIR 内部模块需要)
+peft==0.14.0             # 加载微调权重需要
+einops==0.8.1            # 矩阵变换核心库
+omegaconf==2.3.0         # 配置文件读取 (.yaml)
+
+# === 图像处理与工具 ===
+opencv-python-headless==4.11.0.86
+pydantic==2.10.6
+python-dotenv==1.1.1     # 读取环境变量
+
+# === Web 界面 (如果你想运行网页版) ===
+gradio==5.21.0
