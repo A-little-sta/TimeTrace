@@ -1,0 +1,204 @@
+<svg width="1280" height="760" viewBox="0 0 1280 760" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="title desc">
+  <title id="title">TimeTrace 技术架构图</title>
+  <desc id="desc">TimeTrace 从 Web 与移动端入口，经 FastAPI 网关、业务服务、任务调度进入多模态 AI 引擎，并连接数据、模型与结果存储。</desc>
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1280" y2="760" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#111827"/>
+      <stop offset="0.48" stop-color="#172033"/>
+      <stop offset="1" stop-color="#0F172A"/>
+    </linearGradient>
+    <linearGradient id="gold" x1="0" y1="0" x2="1" y2="1">
+      <stop stop-color="#F8D77A"/>
+      <stop offset="1" stop-color="#B78A2A"/>
+    </linearGradient>
+    <linearGradient id="cyan" x1="0" y1="0" x2="1" y2="1">
+      <stop stop-color="#86EFAC"/>
+      <stop offset="1" stop-color="#22D3EE"/>
+    </linearGradient>
+    <linearGradient id="rose" x1="0" y1="0" x2="1" y2="1">
+      <stop stop-color="#FDA4AF"/>
+      <stop offset="1" stop-color="#C084FC"/>
+    </linearGradient>
+    <linearGradient id="blue" x1="0" y1="0" x2="1" y2="1">
+      <stop stop-color="#93C5FD"/>
+      <stop offset="1" stop-color="#60A5FA"/>
+    </linearGradient>
+    <filter id="shadow" x="-20%" y="-20%" width="140%" height="150%">
+      <feDropShadow dx="0" dy="18" stdDeviation="18" flood-color="#020617" flood-opacity="0.34"/>
+    </filter>
+    <filter id="softGlow" x="-40%" y="-40%" width="180%" height="180%">
+      <feGaussianBlur stdDeviation="24" result="blur"/>
+      <feColorMatrix in="blur" type="matrix" values="1 0 0 0 0.32 0 1 0 0 0.62 0 0 1 0 0.88 0 0 0 0.42 0"/>
+      <feBlend in="SourceGraphic"/>
+    </filter>
+    <marker id="arrowGold" viewBox="0 0 10 10" refX="8.4" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="#EACB71"/>
+    </marker>
+    <marker id="arrowBlue" viewBox="0 0 10 10" refX="8.4" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="#7DD3FC"/>
+    </marker>
+    <style>
+      .title { font: 800 40px "Microsoft YaHei", "PingFang SC", "Noto Sans CJK SC", sans-serif; fill: #F8FAFC; letter-spacing: .5px; }
+      .subtitle { font: 500 17px "Microsoft YaHei", "PingFang SC", "Noto Sans CJK SC", sans-serif; fill: #CBD5E1; }
+      .lane-title { font: 800 18px "Microsoft YaHei", "PingFang SC", "Noto Sans CJK SC", sans-serif; fill: #F8FAFC; }
+      .label { font: 800 19px "Microsoft YaHei", "PingFang SC", "Noto Sans CJK SC", sans-serif; fill: #F8FAFC; }
+      .small { font: 500 13px "Microsoft YaHei", "PingFang SC", "Noto Sans CJK SC", sans-serif; fill: #CBD5E1; }
+      .tiny { font: 600 12px "Microsoft YaHei", "PingFang SC", "Noto Sans CJK SC", sans-serif; fill: #94A3B8; }
+      .chip { font: 700 12px "Microsoft YaHei", "PingFang SC", "Noto Sans CJK SC", sans-serif; fill: #0F172A; }
+      .card { fill: rgba(15, 23, 42, .78); stroke: rgba(255, 255, 255, .14); stroke-width: 1.2; filter: url(#shadow); }
+      .panel { fill: rgba(255, 255, 255, .055); stroke: rgba(255, 255, 255, .13); stroke-width: 1.2; }
+      .line-gold { stroke: #EACB71; stroke-width: 3; stroke-linecap: round; stroke-linejoin: round; marker-end: url(#arrowGold); }
+      .line-blue { stroke: #7DD3FC; stroke-width: 3; stroke-linecap: round; stroke-linejoin: round; marker-end: url(#arrowBlue); }
+      .line-dim { stroke: rgba(226, 232, 240, .24); stroke-width: 2; stroke-linecap: round; stroke-dasharray: 7 9; }
+    </style>
+  </defs>
+
+  <rect width="1280" height="760" rx="34" fill="url(#bg)"/>
+  <circle cx="198" cy="118" r="145" fill="#D4AF37" opacity=".10" filter="url(#softGlow)"/>
+  <circle cx="1088" cy="614" r="182" fill="#38BDF8" opacity=".11" filter="url(#softGlow)"/>
+  <path d="M86 604C252 520 402 592 548 520C710 440 826 352 1198 408" class="line-dim"/>
+
+  <text x="72" y="76" class="title">TimeTrace 多模态影像智能修复架构</text>
+  <text x="74" y="108" class="subtitle">Web / Mobile 入口 · FastAPI 业务网关 · 异步任务调度 · 图像、语音、人像、3D 多模型引擎</text>
+
+  <g transform="translate(64 146)">
+    <rect class="panel" width="248" height="462" rx="22"/>
+    <text x="24" y="38" class="lane-title">体验入口层</text>
+    <text x="24" y="62" class="small">统一创作入口与结果预览</text>
+
+    <g transform="translate(24 94)">
+      <rect class="card" width="200" height="96" rx="18"/>
+      <rect x="18" y="18" width="48" height="38" rx="8" fill="url(#blue)"/>
+      <path d="M26 65H58" stroke="#93C5FD" stroke-width="4" stroke-linecap="round"/>
+      <text x="82" y="37" class="label">Web 前端</text>
+      <text x="82" y="61" class="small">Vue 3 · TypeScript</text>
+      <text x="82" y="80" class="tiny">桌面创作 / 参数面板</text>
+    </g>
+
+    <g transform="translate(24 218)">
+      <rect class="card" width="200" height="96" rx="18"/>
+      <rect x="22" y="14" width="38" height="58" rx="10" fill="url(#cyan)"/>
+      <circle cx="41" cy="64" r="3" fill="#0F172A"/>
+      <text x="82" y="37" class="label">移动端</text>
+      <text x="82" y="61" class="small">uni-app · H5 / 小程序</text>
+      <text x="82" y="80" class="tiny">随拍上传 / 移动预览</text>
+    </g>
+
+    <g transform="translate(24 342)">
+      <rect class="card" width="200" height="78" rx="18"/>
+      <circle cx="42" cy="39" r="24" fill="url(#gold)"/>
+      <path d="M33 40L39 46L52 31" stroke="#111827" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+      <text x="82" y="34" class="label">用户工作流</text>
+      <text x="82" y="58" class="small">上传 · 处理 · 对比 · 下载</text>
+    </g>
+  </g>
+
+  <g transform="translate(378 146)">
+    <rect class="panel" width="268" height="462" rx="22"/>
+    <text x="24" y="38" class="lane-title">业务服务层</text>
+    <text x="24" y="62" class="small">认证、图库、任务与接口封装</text>
+
+    <g transform="translate(24 92)">
+      <rect class="card" width="220" height="86" rx="18"/>
+      <rect x="18" y="19" width="50" height="48" rx="14" fill="url(#gold)"/>
+      <path d="M32 43H54M43 32V54" stroke="#0F172A" stroke-width="4" stroke-linecap="round"/>
+      <text x="84" y="36" class="label">FastAPI 网关</text>
+      <text x="84" y="60" class="small">REST API · Swagger · CORS</text>
+    </g>
+
+    <g transform="translate(24 202)">
+      <rect class="card" width="220" height="88" rx="18"/>
+      <text x="22" y="35" class="label">核心业务模块</text>
+      <text x="22" y="60" class="small">JWT 认证 · 图库管理 · 历史记录</text>
+      <rect x="22" y="69" width="48" height="18" rx="9" fill="#A7F3D0"/>
+      <text x="32" y="82" class="chip">Auth</text>
+      <rect x="78" y="69" width="64" height="18" rx="9" fill="#BAE6FD"/>
+      <text x="91" y="82" class="chip">Gallery</text>
+      <rect x="150" y="69" width="48" height="18" rx="9" fill="#FDE68A"/>
+      <text x="160" y="82" class="chip">Task</text>
+    </g>
+
+    <g transform="translate(24 314)">
+      <rect class="card" width="220" height="90" rx="18"/>
+      <text x="22" y="35" class="label">异步任务调度</text>
+      <text x="22" y="60" class="small">Celery / BackgroundTasks</text>
+      <text x="22" y="79" class="tiny">进度轮询 · 状态追踪 · 失败回收</text>
+    </g>
+  </g>
+
+  <g transform="translate(712 146)">
+    <rect class="panel" width="312" height="462" rx="22"/>
+    <text x="24" y="38" class="lane-title">AI 能力引擎层</text>
+    <text x="24" y="62" class="small">面向各类影像的多模型工作流</text>
+
+    <g transform="translate(24 92)">
+      <rect class="card" width="264" height="312" rx="22"/>
+      <text x="24" y="38" class="label">多模态模型编排</text>
+      <text x="24" y="62" class="small">统一参数 · 模块化调用 · 结果归档</text>
+
+      <g transform="translate(24 86)">
+        <rect width="94" height="44" rx="14" fill="rgba(248, 215, 122, .16)" stroke="#F8D77A"/>
+        <text x="17" y="29" class="small">拂尘修复</text>
+        <rect x="126" width="94" height="44" rx="14" fill="rgba(34, 211, 238, .14)" stroke="#67E8F9"/>
+        <text x="143" y="29" class="small">去噪增强</text>
+      </g>
+      <g transform="translate(24 144)">
+        <rect width="94" height="44" rx="14" fill="rgba(134, 239, 172, .14)" stroke="#86EFAC"/>
+        <text x="17" y="29" class="small">流光上色</text>
+        <rect x="126" width="94" height="44" rx="14" fill="rgba(147, 197, 253, .14)" stroke="#93C5FD"/>
+        <text x="143" y="29" class="small">清影超清</text>
+      </g>
+      <g transform="translate(24 202)">
+        <rect width="94" height="44" rx="14" fill="rgba(253, 164, 175, .14)" stroke="#FDA4AF"/>
+        <text x="17" y="29" class="small">真容人脸</text>
+        <rect x="126" width="94" height="44" rx="14" fill="rgba(192, 132, 252, .14)" stroke="#C084FC"/>
+        <text x="149" y="29" class="small">局部重绘</text>
+      </g>
+      <g transform="translate(24 260)">
+        <rect width="94" height="44" rx="14" fill="rgba(125, 211, 252, .14)" stroke="#7DD3FC"/>
+        <text x="23" y="29" class="small">留音语音</text>
+        <rect x="126" width="94" height="44" rx="14" fill="rgba(251, 191, 36, .14)" stroke="#FBBF24"/>
+        <text x="143" y="29" class="small">人像 / 3D</text>
+      </g>
+    </g>
+  </g>
+
+  <g transform="translate(1080 146)">
+    <rect class="panel" width="136" height="462" rx="22"/>
+    <text x="22" y="38" class="lane-title">数据层</text>
+    <text x="22" y="62" class="small">持久化与资产</text>
+
+    <g transform="translate(20 92)">
+      <rect class="card" width="96" height="70" rx="16"/>
+      <path d="M22 25C22 16 74 16 74 25V48C74 57 22 57 22 48V25Z" fill="url(#blue)"/>
+      <path d="M22 25C22 34 74 34 74 25" stroke="#0F172A" stroke-width="3"/>
+      <text x="26" y="93" class="tiny">MySQL / SQLite</text>
+    </g>
+
+    <g transform="translate(20 210)">
+      <rect class="card" width="96" height="70" rx="16"/>
+      <path d="M24 24H72V52H24Z" fill="url(#gold)"/>
+      <path d="M24 24L48 42L72 24" stroke="#0F172A" stroke-width="3" stroke-linejoin="round"/>
+      <text x="18" y="93" class="tiny">uploads / results</text>
+    </g>
+
+    <g transform="translate(20 328)">
+      <rect class="card" width="96" height="70" rx="16"/>
+      <circle cx="48" cy="35" r="22" fill="url(#rose)"/>
+      <path d="M37 35H59M48 24V46" stroke="#0F172A" stroke-width="4" stroke-linecap="round"/>
+      <text x="22" y="93" class="tiny">Model Weights</text>
+    </g>
+  </g>
+
+  <path d="M312 374C338 374 350 374 378 374" class="line-gold"/>
+  <path d="M646 374C674 374 686 374 712 374" class="line-gold"/>
+  <path d="M1024 374C1050 374 1058 374 1080 374" class="line-blue"/>
+  <path d="M512 460C600 654 836 654 1138 540" class="line-blue"/>
+  <path d="M866 238C958 84 1102 94 1138 238" class="line-dim"/>
+
+  <g transform="translate(72 668)">
+    <rect width="1136" height="54" rx="18" fill="rgba(255,255,255,.06)" stroke="rgba(255,255,255,.12)"/>
+    <text x="28" y="34" class="small">核心链路：用户上传影像 → 网关校验与任务创建 → 调度 AI 模块推理 → 写入结果与历史记录 → 多端对比预览与下载</text>
+    <text x="906" y="34" class="tiny">Designed for GitHub README</text>
+  </g>
+</svg>

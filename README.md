@@ -57,19 +57,11 @@
 
 ## 技术架构
 
-```mermaid
-flowchart LR
-  U["用户"] --> W["Web 前端<br>Vue 3 + TypeScript"]
-  U --> M["移动端<br>uni-app"]
-  W --> A["FastAPI 网关"]
-  M --> A
-  A --> Auth["JWT 认证"]
-  A --> Gallery["图库与素材管理"]
-  A --> Task["任务调度<br>Celery / BackgroundTasks"]
-  Task --> AI["AI 模块层<br>修复 / 上色 / 超清 / 人像 / 语音 / 3D"]
-  AI --> Store["结果存储<br>uploads / results"]
-  Task --> DB["MySQL / SQLite<br>SQLAlchemy"]
-```
+<p align="center">
+  <img src="docs/architecture.svg" alt="TimeTrace 技术架构图" width="100%">
+</p>
+
+TimeTrace 采用多端入口、统一 API 网关、异步任务调度与多模态 AI 模块编排的架构，将影像修复、上色、超清、人脸增强、语音、人像动态化与 3D 能力统一封装为可扩展的创作工作流。
 
 ## 工程亮点
 
