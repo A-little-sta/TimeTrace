@@ -39,7 +39,7 @@
 
 | 真容修复 | 时光引擎 |
 | --- | --- |
-| <img src="TimeTrace_frontend/public/images/zhenrong_before.png" width="49%"><img src="TimeTrace_frontend/public/images/zhenrong_after.jpg" width="49%"> | <img src="TimeTrace_frontend/public/images/ai_before.png" width="49%"><img src="TimeTrace_frontend/public/images/ai_after.png" width="49%"> |
+| <img src="TimeTrace_frontend/public/images/zhenrong_before.png" width="49%"><img src="TimeTrace_frontend/public/images/zhenrong_after.jpg" width="49%"> | <img src="TimeTrace_frontend/public/images/ai_before.png" width="49%"><img src="TimeTrace_frontend/assets/images/AI后.png" width="49%"> |
 
 ## 核心功能
 
