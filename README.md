@@ -1,7 +1,7 @@
 # 岁月笺影 TimeTrace
 
 <p align="center">
-  <img src="TimeTrace_frontend/public/images/ai_after.png" alt="TimeTrace AI restoration preview" width="72%">
+  <img src="TimeTrace_frontend/assets/images/AI后.png" alt="TimeTrace AI restoration preview" width="72%">
 </p>
 
 <p align="center">
