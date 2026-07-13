@@ -41,7 +41,7 @@ def run_module_task(module_name: str, args: list):
             continue
         
         # 检查是否是路径参数（--input, --output, --mask等后面的参数）
-        if arg in ['--input', '--output', '--mask'] and i + 1 < len(args):
+        if arg in ['--input', '--output', '--mask', '--source_image', '--driving_video', '--driving_audio', '--output_dir'] and i + 1 < len(args):
             processed_args.append(arg)
             # 转换为绝对路径
             path_arg = args[i + 1]

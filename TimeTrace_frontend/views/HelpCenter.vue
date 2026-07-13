@@ -187,6 +187,74 @@
               </div>
             </div>
 
+            <!-- 拂尘去噪详细使用指南 -->
+            <div v-if="currentTab === 'dustless_denoise' && activeData.detailedGuide" class="mb-12">
+              <h3 class="text-xs font-bold text-slate-900 uppercase tracking-wider mb-5 flex items-center gap-2">
+                 <span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span> 详细使用指南
+              </h3>
+              
+              <div class="bg-gradient-to-br from-emerald-50 to-teal-50 rounded-2xl p-6 border border-emerald-100/50 mb-6">
+                <h4 class="font-bold text-emerald-900 text-lg mb-2">{{ activeData.detailedGuide.title }}</h4>
+                <p class="text-emerald-800/80 leading-relaxed">{{ activeData.detailedGuide.description }}</p>
+              </div>
+
+              <!-- 操作步骤 -->
+              <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+                <div v-for="(step, index) in activeData.detailedGuide.steps" :key="index" 
+                  class="bg-white/80 rounded-xl p-5 border border-slate-100 hover:shadow-lg transition-all duration-300">
+                  <div class="flex items-center mb-3">
+                    <div class="w-8 h-8 rounded-full bg-emerald-100 flex items-center justify-center text-emerald-600 font-bold text-sm mr-3">
+                      {{ index + 1 }}
+                    </div>
+                    <h5 class="font-bold text-slate-900">{{ step.title }}</h5>
+                  </div>
+                  <p class="text-sm text-slate-600 leading-relaxed">{{ step.description }}</p>
+                </div>
+              </div>
+
+              <!-- 修复效果示例 -->
+              <div class="bg-white/80 rounded-2xl p-6 border border-slate-100 mb-6">
+                <h4 class="font-bold text-slate-900 text-lg mb-4 flex items-center gap-2">
+                  <FontAwesomeIcon icon="fa-solid fa-images" class="text-emerald-600" />
+                  {{ activeData.detailedGuide.example.title }}
+                </h4>
+                
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div class="text-center">
+                    <img :src="activeData.detailedGuide.example.before.image" 
+                         :alt="activeData.detailedGuide.example.before.description"
+                         class="w-full rounded-lg shadow-md mb-3">
+                    <p class="text-sm text-slate-600 font-medium">{{ activeData.detailedGuide.example.before.description }}</p>
+                  </div>
+                  <div class="text-center">
+                    <img :src="activeData.detailedGuide.example.after.image" 
+                         :alt="activeData.detailedGuide.example.after.description"
+                         class="w-full rounded-lg shadow-md mb-3">
+                    <p class="text-sm text-slate-600 font-medium">{{ activeData.detailedGuide.example.after.description }}</p>
+                  </div>
+                </div>
+                
+                <div class="mt-4 p-4 bg-emerald-50/50 rounded-lg border border-emerald-100">
+                  <p class="text-sm text-emerald-800 leading-relaxed">{{ activeData.detailedGuide.example.explanation }}</p>
+                </div>
+              </div>
+
+              <!-- 使用技巧 -->
+              <div class="bg-gradient-to-br from-blue-50 to-indigo-50 rounded-2xl p-6 border border-blue-100/50">
+                <h4 class="font-bold text-blue-900 text-lg mb-4 flex items-center gap-2">
+                  <FontAwesomeIcon icon="fa-solid fa-lightbulb" class="text-blue-600" />
+                  使用技巧与建议
+                </h4>
+                <ul class="space-y-2">
+                  <li v-for="(tip, index) in activeData.detailedGuide.tips" :key="index" 
+                      class="flex items-start gap-2 text-sm text-blue-800/80">
+                    <FontAwesomeIcon icon="fa-solid fa-check" class="text-blue-600 mt-0.5 flex-shrink-0" />
+                    <span>{{ tip }}</span>
+                  </li>
+                </ul>
+              </div>
+            </div>
+
             <!-- 时光引擎技术特点 -->
             <div v-if="currentTab === 'time_engine'" class="mb-12">
               <h3 class="text-xs font-bold text-slate-900 uppercase tracking-wider mb-5 flex items-center gap-2">
@@ -303,8 +371,8 @@ const contentData: Record<string, FeatureData> = {
       '需要整体重构和细节重绘的珍贵照片',
       '希望获得艺术级修复效果的经典照片'
     ],
-    beforeImage: './assets/images/AI前.png', 
-    afterImage: './assets/images/AI后.png',
+    beforeImage: '/images/ai_before.png', 
+    afterImage: '/images/ai_after.png',
     demoDesc: '拖动滑块查看：AI如何基于节点流工作流，智能理解并重绘严重破损的照片。',
     limitations: '对于极端严重的照片损坏，可能需要较长的处理时间。建议使用高分辨率原始照片以获得最佳效果。时光引擎会基于AI理解进行创造性修复，可能与原始照片存在艺术性差异。'
   },
@@ -318,8 +386,8 @@ const contentData: Record<string, FeatureData> = {
       '扫描后带有大量灰尘噪点的底片',
       '想要去除画面中简单的杂物或水印'
     ],
-    beforeImage: './assets/images/拂尘前.png', 
-    afterImage: './assets/images/拂尘后.jpg',
+    beforeImage: '/images/dustless_before.png', 
+    afterImage: '/images/dustless_after.jpg',
     demoDesc: '拖动滑块查看：AI 如何自动识别并无痕填补复杂的纸张裂痕。',
     limitations: '对于面部五官的严重物理缺失（如眼睛处正好有个大洞），拂尘只能根据周围皮肤纹理填补，无法“凭空猜出”长相。建议修复后结合“真容”模块使用。'
   },
@@ -333,8 +401,8 @@ const contentData: Record<string, FeatureData> = {
       '褪色严重的彩色照片（偏红/偏黄矫正）',
       '需要营造艺术氛围的线稿或素描'
     ],
-    beforeImage: './assets/images/流光前.jpg', // 黑白
-    afterImage: './assets/images/流光后.jpg', // 彩色
+    beforeImage: '/images/colorize_before.jpg', // 黑白
+    afterImage: '/images/colorize_after.jpg', // 彩色
     demoDesc: '智能分析衣物材质与环境光，还原最接近历史真实的色彩。',
     limitations: 'AI 对历史特定物体的颜色可能推测不准（如某件制服当年具体的颜色规定）。我们提供了“艺术”与“纪实”两种上色模式供选择。'
   },
@@ -348,8 +416,8 @@ const contentData: Record<string, FeatureData> = {
       '被微信/网络多次转发压缩的马赛克图',
       '需要打印成大幅海报的低清合影'
     ],
-    beforeImage: './assets/images/清影前.png', // 模糊低清
-    afterImage: './assets/images/清影后.jpg', // 高清
+    beforeImage: '/images/qingying_before.png', // 模糊低清
+    afterImage: '/images/qingying_after.jpg', // 高清
     demoDesc: 'HYPIR 模型重构发丝、衣物纹理等微小细节，分辨率提升 4 倍。',
     limitations: '因为是生成式模型（AIGC），对于极度模糊背景中的小字或远处的人脸，可能会生成出“不存在的细节”（幻觉）。但在风景和静物特写上效果极佳。'
   },
@@ -362,8 +430,8 @@ const contentData: Record<string, FeatureData> = {
       '对焦不准的人像特写',
       '面部有大量噪点或轻微破损的照片'
     ],
-    beforeImage: './assets/images/真容前.png', // 模糊人脸
-    afterImage: './assets/images/真容后.jpg', // 清晰人脸
+    beforeImage: '/images/zhenrong_before.png', // 模糊人脸
+    afterImage: '/images/zhenrong_after.jpg', // 清晰人脸
     demoDesc: '专注于眼、鼻、嘴的结构重建，显著提升五官立体感与神态清晰度。',
     limitations: '此功能仅针对面部区域生效。如果照片背景也很模糊，强烈建议先使用"清影"修复整体画质，再用"真容"进行面部精修。'
   },
@@ -377,10 +445,52 @@ const contentData: Record<string, FeatureData> = {
       '屏幕截图中的图像噪声',
       '老照片的数字噪声和模糊'
     ],
-    beforeImage: './assets/images/降噪前.jpg', // 有噪点
-    afterImage: './assets/images/降噪后.jpg', // 降噪后
+    beforeImage: '/images/denoise_before.jpg', // 有噪点
+    afterImage: '/images/denoise_after.jpg', // 降噪后
     demoDesc: '拖动滑块查看：AI如何智能识别并去除复杂的摩尔纹和图像噪声。',
-    limitations: '对于极端严重的噪声和摩尔纹，可能需要多次处理或结合其他修复功能。建议先使用去噪功能，再进行其他修复。'
+    limitations: '对于极端严重的噪声和摩尔纹，可能需要多次处理或结合其他修复功能。建议先使用去噪功能，再进行其他修复。',
+    // 新增详细使用指南
+    detailedGuide: {
+      title: '拂尘降噪修复功能详解',
+      description: '专业去除各种图像噪声，包括摩尔纹、扫描噪点、压缩噪点等，结合清影提高清晰度技术，让照片恢复纯净清晰。',
+      steps: [
+        {
+          title: '上传照片',
+          description: '选择需要降噪修复的照片，支持JPG、PNG等常见格式，建议照片分辨率不低于800×600像素。'
+        },
+        {
+          title: '选择修复类型',
+          description: '在拂尘修复模块中选择"降噪修复"模式，系统将自动识别并去除图像中的各种噪点。'
+        },
+        {
+          title: 'AI智能处理',
+          description: '系统使用UHDM超高清降噪算法分析图像，智能识别并去除摩尔纹、扫描噪点、压缩噪点等。'
+        },
+        {
+          title: '查看效果',
+          description: '处理完成后，对比修复前后的效果差异，可以下载修复后的高清图片。'
+        }
+      ],
+      example: {
+        title: '修复效果示例',
+        before: {
+          image: '/images/denoise_before.jpg',
+          description: '修复前：照片存在明显的摩尔纹和图像噪声，细节模糊不清'
+        },
+        after: {
+          image: '/images/denoise_after.jpg', 
+          description: '修复后：噪点被智能去除，图像恢复纯净清晰，细节更加锐利'
+        },
+        explanation: '拂尘降噪功能结合清影提高清晰度技术，能够有效去除各种图像噪点。通过AI算法智能分析图像特征，在保持原始细节的同时去除干扰噪声，让老照片重获新生。\n\n💡 技术原理说明：\n• 拂尘去噪：去除图像中的噪声干扰，但可能会轻微降低图像锐度\n• 清影超清：通过AI重绘技术提升图像清晰度和细节表现\n• 组合优势：先降噪去除干扰，再超清提升细节，实现1+1>2的修复效果'
+      },
+      tips: [
+        '对于严重噪点的照片，建议先使用降噪功能，再进行其他修复处理',
+        '降噪处理虽然去除了噪声，但可能会轻微降低图像锐度',
+        '强烈推荐：降噪后搭配清影功能使用，既能去除噪声又能提升清晰度',
+        '组合使用效果更佳：先拂尘去噪，再清影超清，实现最佳修复效果',
+        '支持批量处理，可以一次性处理多张噪点照片'
+      ]
+    }
   },
   voice: {
     title: '留音 · 语音魔法',
@@ -393,8 +503,8 @@ const contentData: Record<string, FeatureData> = {
       '为家庭相册制作有声回忆录',
       '为历史照片添加语音解说'
     ],
-    beforeImage: './assets/images/voice_preview/male1_preview.wav', // 使用音频预览图
-    afterImage: './assets/images/voice_preview/female1_preview.wav', // 使用音频预览图
+    beforeImage: '/audio/male1_preview.wav', // 使用音频预览图
+    afterImage: '/audio/female1_preview.wav', // 使用音频预览图
     demoDesc: '留音模块提供两种模式：文本转语音和声音复活，满足不同的语音生成需求。',
     limitations: '声音复活功能需要提供清晰的参考音频样本，样本质量直接影响克隆效果。文本转语音功能支持多种音色选择，但生成效果受文本内容和长度影响。'
   },
@@ -409,8 +519,8 @@ const contentData: Record<string, FeatureData> = {
       '为家庭相册制作动态回忆录',
       '让证件照或肖像照展现自然的微笑表情'
     ],
-    beforeImage: './assets/images/liveportrait_preview/before.jpg', // 静态照片
-    afterImage: './assets/images/liveportrait_preview/after.mp4', // 动态视频
+    beforeImage: '/images/ai_before.png', // 静态照片（使用现有图片作为占位符）
+    afterImage: '/images/ai_after.png', // 动态视频（使用现有图片作为占位符）
     demoDesc: '灵动模块通过AI技术分析人像特征，生成自然的头部动作和表情变化，让照片中的人物仿佛活了过来。',
     limitations: '生成效果受原始照片质量影响，清晰度高、光线好的照片效果更佳。处理时间较长，请耐心等待。建议使用正面清晰的人像照片，避免侧脸或模糊图像。'
   }

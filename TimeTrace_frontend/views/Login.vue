@@ -5,10 +5,15 @@ import { useAuthStore } from '../store';
 
 const username = ref('');
 const password = ref('');
+const showPassword = ref(false);
 const isLoading = ref(false);
 const errorMessage = ref('');
 const router = useRouter();
 const authStore = useAuthStore();
+
+const togglePasswordVisibility = () => {
+  showPassword.value = !showPassword.value;
+};
 
 const handleLogin = async () => {
   if (!username.value || !password.value) {
@@ -34,7 +39,7 @@ const handleLogin = async () => {
   <div class="min-h-screen flex bg-white font-sans text-gray-900 selection:bg-primary-100 selection:text-primary-700">
     <div class="hidden lg:flex flex-1 relative overflow-hidden group bg-gray-100">
       <img 
-        src="../assets/images/login.jpg"
+        src="/images/login.jpg"
         alt="Vintage Photo Album" 
         class="absolute inset-0 w-full h-full object-cover transition-transform duration-[20s] ease-linear scale-100 group-hover:scale-105"
       />
@@ -47,10 +52,10 @@ const handleLogin = async () => {
             
             <div class="mb-6 w-16 h-1.5 bg-primary-400 rounded-full shadow-[0_0_10px_rgba(96,165,250,0.5)]"></div>
             <h1 class="text-5xl font-serif font-bold leading-tight mb-4 tracking-wide text-white drop-shadow-sm">
-              重拾<span class="text-primary-300 italic">岁月</span>的温度
+              重拾<span class="text-primary-300 italic">影像</span>的精彩
             </h1>
             <p class="text-lg text-gray-200 font-light leading-relaxed max-w-lg">
-              TimeTrace 利用先进 AI 技术，修复、上色并复活您的珍贵老照片。让记忆不再斑驳，让爱意跨越时间。
+              TimeTrace 利用先进 AI 技术，智能修复各类受损影像。从老照片修复到现代数码照片优化，从噪点去除到色彩还原，让每一张照片都焕发新生。
             </p>
         </div>
       </div>
@@ -94,11 +99,25 @@ const handleLogin = async () => {
                   <input 
                     id="password" 
                     v-model="password"
-                    type="password" 
+                    :type="showPassword ? 'text' : 'password'" 
                     required 
-                    class="peer w-full px-5 py-4 bg-gray-50 border-0 text-gray-900 rounded-2xl focus:bg-white focus:ring-2 focus:ring-primary-500/20 focus:shadow-lg focus:shadow-primary-500/10 transition-all placeholder-gray-400 font-medium" 
+                    class="peer w-full px-5 py-4 pr-12 bg-gray-50 border-0 text-gray-900 rounded-2xl focus:bg-white focus:ring-2 focus:ring-primary-500/20 focus:shadow-lg focus:shadow-primary-500/10 transition-all placeholder-gray-400 font-medium" 
                     placeholder="••••••••" 
                   />
+                  <!-- 显示/隐藏密码按钮 -->
+                  <button 
+                    type="button"
+                    @click="togglePasswordVisibility"
+                    class="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors"
+                  >
+                    <svg v-if="showPassword" class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                    </svg>
+                    <svg v-else class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.878 9.878L3 3m6.878 6.878L21 21" />
+                    </svg>
+                  </button>
                    <div class="absolute bottom-0 left-2 right-2 h-0.5 bg-primary-500 scale-x-0 transition-transform duration-300 peer-focus:scale-x-100 origin-center opacity-50"></div>
               </div>
             </div>

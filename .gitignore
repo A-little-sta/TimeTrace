@@ -95,6 +95,11 @@ logs/
 *.log
 static/results/
 static/uploads/
+TimeTrace_Backend/app.log
+TimeTrace_Backend/app/timetrace.db
+TimeTrace_Backend/static/results/
+TimeTrace_Backend/static/uploads/
+TimeTrace_Backend/result_images/
 outputs/
 temp/
 tmp/
@@ -144,6 +149,9 @@ tests/
 Module_Dustless/Bringing-Old-Photos-Back-to-Life-master/Global/checkpoints/
 Module_Dustless/UHDM-main/utils/weights/
 Module_LivePortrait/src/utils/dependencies/XPose/models/UniPose/ops/build/
+TimeTrace_Backend/Module_voiceclone/GPT-SoVITS-v2pro/GPT_SoVITS/BigVGAN/filelists/
+TimeTrace_Backend/Module_voiceclone/GPT-SoVITS-v2pro/GPT_SoVITS/text/*cache*.pickle
+TimeTrace_Backend/Module_voiceclone/GPT-SoVITS-v2pro/GPT_SoVITS/text/ja_userdic/
 
 # ==========================================
 # 9. 忽略其他压缩包和备份文件
@@ -153,6 +161,13 @@ Module_LivePortrait/src/utils/dependencies/XPose/models/UniPose/ops/build/
 *.old
 *.orig
 *.rej
+*.timestamp-*.mjs
+新建 文本文档.txt
+
+# 本地参赛/需求文档原件体积较大，GitHub 展示使用 README 即可
+*.docx
+需求规格说明书.pdf
+01-3*.pdf
 
 # ==========================================
 # 10. 忽略特定文件夹（根据项目结构添加）

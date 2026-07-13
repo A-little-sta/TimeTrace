@@ -2,7 +2,7 @@
   <div class="min-h-screen bg-[#F3F4F6] p-6 md:p-10 pb-20">
     <div class="max-w-7xl mx-auto space-y-12 animate-fade-in-up">
       <!-- Header -->
-      <header class="flex justify-between items-center py-4">
+      <header class="flex flex-col sm:flex-row justify-between items-start sm:items-center py-4 gap-4">
       <div>
         <h1 class="font-serif text-4xl md:text-5xl bg-gradient-to-r from-primary-400 via-primary-500 to-primary-600 bg-clip-text text-transparent font-bold mb-3 tracking-tight">
           岁月笺影基于AI的多模态影像修复系统
@@ -23,7 +23,7 @@
 
     <!-- Modules Grid -->
     <div>
-      <div class="flex items-center justify-between mb-8">
+      <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-8 gap-2">
         <h2 class="text-2xl font-bold text-gray-800 font-serif flex items-center gap-3">
           <span class="w-8 h-8 rounded-lg bg-primary-100 flex items-center justify-center text-primary-600 text-sm shadow-sm">
               <FontAwesomeIcon icon="fa-solid fa-shapes" />

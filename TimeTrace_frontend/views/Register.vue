@@ -6,24 +6,47 @@ import { useAuthStore } from '../store';
 const username = ref('');
 const email = ref('');
 const password = ref('');
+const showPassword = ref(false);
 const isLoading = ref(false);
 const errorMessage = ref('');
 const router = useRouter();
 const authStore = useAuthStore();
 
+const togglePasswordVisibility = () => {
+  showPassword.value = !showPassword.value;
+};
+
 const handleRegister = async () => {
+  // 清空之前的错误信息
+  errorMessage.value = '';
+  
+  // 基础验证
   if (!username.value || !email.value || !password.value) {
     errorMessage.value = '请填写完整的注册信息';
     return;
   }
   
+  // 邮箱格式验证
+  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  if (!emailRegex.test(email.value)) {
+    errorMessage.value = '邮箱格式不正确，请检查后重试';
+    return;
+  }
+  
+  // 密码强度验证
+  if (password.value.length < 6) {
+    errorMessage.value = '密码长度至少6位';
+    return;
+  }
+  
   isLoading.value = true;
-  errorMessage.value = '';
   
   try {
     await authStore.register(username.value, email.value, password.value);
-    router.push('/');
+    // 注册成功后直接跳转到首页
+    router.push('/app');
   } catch (error) {
+    // 使用API服务中已经处理好的友好错误信息
     errorMessage.value = error instanceof Error ? error.message : '注册失败，请稍后重试';
   } finally {
     isLoading.value = false;
@@ -35,7 +58,7 @@ const handleRegister = async () => {
   <div class="min-h-screen flex bg-white font-sans text-gray-900 selection:bg-primary-100 selection:text-primary-700">
     <div class="hidden lg:flex flex-1 relative overflow-hidden group bg-stone-100">
        <img 
-         src="https://images.unsplash.com/photo-1464822759023-fed622ff2c3b?q=80&w=2748&auto=format&fit=crop" 
+         src="/images/regester.png" 
          alt="Vintage Camera" 
          class="absolute inset-0 w-full h-full object-cover mix-blend-multiply opacity-80 transition-transform duration-[25s] ease-in-out scale-100 group-hover:scale-110"
        />
@@ -46,9 +69,9 @@ const handleRegister = async () => {
              <div class="mt-auto pl-4 border-l-4 border-primary-400">
                  <h1 class="text-5xl font-serif font-bold leading-none mb-6 drop-shadow-lg">
                    注册<br/>
-                   <span class="text-3xl font-light text-primary-200 block mt-4 tracking-wider">开启时光之旅</span>
+                   <span class="text-3xl font-light text-primary-200 block mt-4 tracking-wider">开启影像修复之旅</span>
                  </h1>
-                 <p class="text-lg text-gray-100 font-light max-w-md leading-relaxed">加入 TimeTrace 社区，AI 将为您拂去岁月的尘埃，还原记忆的色彩。</p>
+                 <p class="text-lg text-gray-100 font-light max-w-md leading-relaxed">加入 TimeTrace 社区，AI 将为您智能修复各类影像。从老照片到现代数码照片，让每一张照片都焕发新生。</p>
              </div>
          </div>
        </div>
@@ -106,16 +129,39 @@ const handleRegister = async () => {
                <input 
                  id="password" 
                  v-model="password"
-                 type="password" 
+                 :type="showPassword ? 'text' : 'password'" 
                  required 
-                 class="w-full pl-12 pr-4 py-4 bg-gray-50 border-transparent text-gray-900 rounded-2xl focus:bg-white focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:shadow-lg focus:shadow-primary-500/10 transition-all placeholder-gray-400 font-medium" 
-                 placeholder="至少6位字符" 
+                 class="w-full pl-12 pr-12 py-4 bg-gray-50 border-transparent text-gray-900 rounded-2xl focus:bg-white focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:shadow-lg focus:shadow-primary-500/10 transition-all placeholder-gray-400 font-medium" 
+                 placeholder="至少6位" 
                />
+               <!-- 显示/隐藏密码按钮 -->
+               <button 
+                 type="button"
+                 @click="togglePasswordVisibility"
+                 class="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors"
+               >
+                 <svg v-if="showPassword" class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                 </svg>
+                 <svg v-else class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.878 9.878L3 3m6.878 6.878L21 21" />
+                 </svg>
+               </button>
              </div>
           </div>
 
-          <div v-if="errorMessage" class="p-4 rounded-xl bg-red-50 border border-red-100 text-red-600 text-sm font-medium text-center animate-shake">
-            {{ errorMessage }}
+          <div v-if="errorMessage" class="mt-4 p-4 bg-red-50 border-l-4 border-red-400 rounded-lg shadow-sm">
+            <div class="flex items-start">
+              <div class="flex-shrink-0">
+                <svg class="w-5 h-5 text-red-400 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
+                  <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd" />
+                </svg>
+              </div>
+              <div class="ml-3">
+                <p class="text-sm text-red-700 font-medium">{{ errorMessage }}</p>
+              </div>
+            </div>
           </div>
 
           <button 

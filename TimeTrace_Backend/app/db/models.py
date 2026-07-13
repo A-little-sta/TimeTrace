@@ -19,8 +19,8 @@ class User(Base):
     
     id = Column(Integer, primary_key=True, index=True)
     username = Column(String(50), unique=True, index=True, nullable=False)
-    email = Column(String(100), unique=True, index=True, nullable=False)
-    password_hash = Column(String(255), nullable=False)
+    email = Column(String(100), unique=True, index=True, nullable=True)
+    password_hash = Column(String(255), nullable=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())
     
@@ -53,7 +53,7 @@ class Mask(Base):
     filename = Column(String(255), nullable=False)
     mask_path = Column(String(255), nullable=False)
     user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
-    photo_id = Column(Integer, ForeignKey("photos.id"), nullable=False)
+    photo_id = Column(Integer, ForeignKey("photos.id"), nullable=True)  # 允许为空，TTS等音频任务不需要照片
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())
     

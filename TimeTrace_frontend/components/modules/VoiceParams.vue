@@ -77,13 +77,13 @@ const previewAudio = ref<HTMLAudioElement | null>(null);
 const isPlayingPreview = ref(false);
 const currentPreviewVoice = ref<string | null>(null);
 
-// 预生成的预览音频文件路径 (使用assets目录)
+// 预生成的预览音频文件路径 (使用public目录)
 const previewAudioUrls = {
-  male1: '/assets/voice_preview/male1_preview.wav',
-  male2: '/assets/voice_preview/male2_preview.wav',
-  female1: '/assets/voice_preview/female1_preview.wav',
-  female2: '/assets/voice_preview/female2_preview.wav',
-  narrator: '/assets/voice_preview/narrator_preview.wav'
+  male1: '/audio/male1_preview.wav',
+  male2: '/audio/male2_preview.wav',
+  female1: '/audio/female1_preview.wav',
+  female2: '/audio/female2_preview.wav',
+  narrator: '/audio/narrator_preview.wav'
 };
 
 // 播放音色预览

@@ -2,7 +2,7 @@ import os
 import subprocess
 from uuid import uuid4
 from pathlib import Path
-from app.core.config import settings
+from app.core.config import settings, ENV_MAP
 
 # 导入torch用于GPU检测
 try:
@@ -177,7 +177,7 @@ def _denoise_repair_cli(original_path: str, result_path: str) -> str:
     
     try:
         # 获取esdnet虚拟环境的Python解释器路径
-        esdnet_python = settings.ENV_MAP.get("esdnet", "python")
+        esdnet_python = ENV_MAP.get("esdnet", "python")
         
         # UHDM项目路径
         uhdm_path = Path(__file__).parent.parent / "Module_Dustless" / "UHDM-main"
@@ -243,7 +243,7 @@ def _denoise_repair_cli(original_path: str, result_path: str) -> str:
     
     try:
         # 获取esdnet虚拟环境的Python解释器路径
-        esdnet_python = settings.ENV_MAP.get("esdnet", "python")
+        esdnet_python = ENV_MAP.get("esdnet", "python")
         
         # UHDM项目路径
         uhdm_path = Path(__file__).parent.parent / "Module_Dustless" / "UHDM-main"
@@ -363,7 +363,7 @@ def _scratch_repair(
             temp_mask_path = str(Path(settings.RESULT_DIR) / f"mask_{uuid4()}.png")
             
             # 获取repair_env虚拟环境的Python解释器路径
-            repair_python_exe = settings.ENV_MAP.get("dustless", "python")
+            repair_python_exe = ENV_MAP.get("dustless", "python")
             
             # 构建掩码生成命令
             export_mask_cmd = [
@@ -454,7 +454,7 @@ def _run_lama_inpaint(input_path: str, mask_path: str, output_path: str) -> None
     print(f"   输出路径: {output_path}")
     
     # 获取Lama模型虚拟环境的Python解释器路径
-    lama_python_exe = settings.ENV_MAP.get("repair_env", "python")
+    lama_python_exe = ENV_MAP.get("repair_env", "python")
     
     # Lama模型脚本路径
     lama_script_path = str(Path(__file__).parent.parent / "Module_Dustless" / "lama" / "run_lama_simple.py")

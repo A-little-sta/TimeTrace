@@ -39,10 +39,13 @@ async def upload_photo(
     with open(upload_path, "wb") as f:
         f.write(contents)
     
+    # 统一为正斜杠的相对路径存储（兼容 Windows/Linux 跨平台部署）
+    db_path = os.path.relpath(upload_path, os.getcwd()).replace("\\", "/")
+    
     # 创建数据库记录
     photo = Photo(
         filename=file.filename,
-        original_path=upload_path,
+        original_path=db_path,
         user_id=current_user.id
     )
     db.add(photo)

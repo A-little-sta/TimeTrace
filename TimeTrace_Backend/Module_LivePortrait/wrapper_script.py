@@ -265,6 +265,7 @@ def main():
         print(err_msg, file=sys.stderr)
         traceback.print_exc(file=sys.stderr)
         print(json.dumps({"status": "error", "message": err_msg}))
+        sys.exit(1)  # 确保异常时返回非零退出码
 
 if __name__ == "__main__":
     main()

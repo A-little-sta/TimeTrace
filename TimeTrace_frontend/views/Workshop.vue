@@ -23,6 +23,8 @@ import LivePortraitParams, { LivePortraitParamsType } from '../components/module
 import LivePortraitVideo from '../components/modules/LivePortraitVideo.vue';
 // 导入时光引擎参数组件
 import TimeEngineParams from '../components/modules/TimeEngineParams.vue';
+// 导入维度重塑参数组件
+import DimensionSculptorParams, { DimensionSculptorParamsType } from '../components/modules/DimensionSculptorParams.vue';
 
 
 
@@ -208,6 +210,25 @@ const handleVoiceProcess = async () => {
             // 音频加载完成，显示结果
             resultImage.value = audioUrl;
             isProcessing.value = false;
+            
+            // 发送事件通知创作时光轴刷新历史记录
+            window.dispatchEvent(new CustomEvent('refresh_histories', {
+                detail: {
+                    operation_type: voiceParams.value.mode === 'clone' ? 'voice_clone' : 'tts',
+                    media_type: 'audio'
+                }
+            }));
+            
+            // 同时保存到 localStorage，确保即使事件丢失也能刷新
+            try {
+                localStorage.setItem('time_trace_pending_refresh', JSON.stringify({
+                    timestamp: Date.now(),
+                    operation_type: voiceParams.value.mode === 'clone' ? 'voice_clone' : 'tts',
+                    media_type: 'audio'
+                }));
+            } catch (e) {
+                console.warn('保存刷新标记失败:', e);
+            }
         };
         
         audio.onerror = () => {
@@ -305,12 +326,40 @@ const handleLivePortraitProcess = async () => {
         });
 
         if (!response.ok) {
-            const error = await response.json();
-            throw new Error(error.detail || '任务创建失败');
+            let errorMessage = '任务创建失败';
+            try {
+                const errorData = await response.json();
+                errorMessage = errorData.detail || errorData.message || errorMessage;
+            } catch (parseError) {
+                // 如果JSON解析失败，使用状态码判断
+                if (response.status === 413) {
+                    errorMessage = '文件大小超过限制，请上传较小的文件';
+                } else if (response.status === 415) {
+                    errorMessage = '文件格式不支持，请上传支持的音频/视频格式';
+                } else if (response.status === 422) {
+                    errorMessage = '输入数据格式不正确，请检查参数设置';
+                } else if (response.status >= 500) {
+                    errorMessage = '服务器暂时不可用，请稍后重试';
+                }
+            }
+            throw new Error(errorMessage);
         }
 
         const result = await response.json();
         const taskId = result.task_id;
+        
+        // 任务提交成功，立即显示成功提示
+        console.log('LivePortrait任务已成功提交，任务ID:', taskId);
+        
+        // 发送任务开始通知到消息中心
+        window.dispatchEvent(new CustomEvent('add-notification', {
+            detail: {
+                type: 'info',
+                title: '任务开始',
+                message: '您的【灵动人像】任务已开始处理，请稍候...',
+                taskId: taskId
+            }
+        }));
         
         // 发送任务开始事件到创作时光轴 - 使用更可靠的事件触发
         const taskData = {
@@ -357,10 +406,36 @@ const handleLivePortraitProcess = async () => {
                         saveModuleState();
                         
                         alert('人像复活完成！');
+                        
+                        // 发送任务完成通知到消息中心
+                        window.dispatchEvent(new CustomEvent('add-notification', {
+                            detail: {
+                                type: 'success',
+                                title: '灵动人像完成',
+                                message: '您的【灵动人像】任务已处理完成！可以查看生成的人像动画效果。',
+                                taskId: taskId,
+                                action: {
+                                    type: 'navigate',
+                                    route: '/history',
+                                    label: '查看修复历史'
+                                }
+                            }
+                        }));
+                        
                     } else {
                         throw new Error('任务完成但未生成结果文件');
                     }
                 } else if (taskData.status === 'failed') {
+                    // 先发送任务失败通知（必须在throw之前，否则不会执行）
+                    window.dispatchEvent(new CustomEvent('add-notification', {
+                        detail: {
+                            type: 'error',
+                            title: '灵动人像失败',
+                            message: `抱歉，您的【灵动人像】任务处理失败：${taskData.error_message || '未知错误'}`,
+                            taskId: taskId
+                        }
+                    }));
+                    
                     throw new Error(taskData.error_message || '任务处理失败');
                 }
                 
@@ -372,7 +447,16 @@ const handleLivePortraitProcess = async () => {
                 const smoothProgress = baseProgress + (Math.random() * 2 - 1); // ±1%的随机波动
                 livePortraitProgress.value = Math.max(0, Math.min(smoothProgress, 100));
             } else {
-                throw new Error('获取任务状态失败');
+                // 获取任务状态失败，但不立即抛出错误，继续尝试
+                console.warn(`获取任务状态失败 (尝试次数: ${pollCount + 1})，继续重试...`);
+                
+                // 如果是网络错误，提供更友好的处理
+                if (pollCount > 10) { // 连续10次失败后提示用户
+                    const continueWaiting = confirm('网络连接不稳定，是否继续等待生成完成？\n\n选择"确定"继续等待，或"取消"停止生成。');
+                    if (!continueWaiting) {
+                        throw new Error('生成已取消，您可以稍后在创作时光轴查看结果');
+                    }
+                }
             }
             
             pollCount++;
@@ -401,7 +485,7 @@ const handleLivePortraitProcess = async () => {
                         
                         if (taskData.status === 'completed') {
                             taskCompleted = true;
-                            const videoUrl = taskData.result?.video_url;
+                            const videoUrl = getFullImageUrl(taskData.result_path);
                             if (videoUrl) {
                                 resultImage.value = videoUrl;
                                 alert('人像复活完成！');
@@ -414,34 +498,73 @@ const handleLivePortraitProcess = async () => {
                         
                         loadingMsg.value = '继续等待生成完成...';
                     } else {
-                        throw new Error('获取任务状态失败');
+                        // 延长轮询阶段的错误处理更宽容
+                        console.warn('延长等待阶段获取任务状态失败，继续重试...');
                     }
                 }
             } else {
-                // 用户选择取消
-                throw new Error('生成已取消，您可以稍后重试');
+                // 用户选择取消，提供友好的提示
+                throw new Error('生成已取消，您可以稍后在创作时光轴查看结果');
             }
         }
         
     } catch (e: any) {
         console.error("人像复活生成错误:", e);
         
-        // 更友好的错误提示
-        let errorMessage = `人像复活失败: ${e.message}`;
+        // 更友好的错误提示 - 根据具体错误类型提供精准提示
+        let errorMessage = e.message;
         
-        if (e.message.includes("网络")) {
-            errorMessage = "网络连接失败，请检查网络设置";
-        } else if (e.message.includes("超时")) {
-            errorMessage = "生成超时，请稍后重试";
-        } else if (e.message.includes("服务不可用")) {
+        // 任务提交阶段的错误
+        if (e.message.includes("任务创建失败")) {
+            errorMessage = "任务提交失败，请检查网络连接和文件格式";
+        }
+        // 文件相关错误
+        else if (e.message.includes("文件大小超过限制")) {
+            errorMessage = "文件大小超过限制，请上传小于100MB的文件";
+        }
+        else if (e.message.includes("文件格式不支持")) {
+            errorMessage = "文件格式不支持，请上传MP3、WAV音频或MP4、MOV视频文件";
+        }
+        // 网络相关错误
+        else if (e.message.includes("网络") || e.message.includes("Network")) {
+            errorMessage = "网络连接不稳定，请检查网络设置后重试";
+        }
+        // 超时相关错误
+        else if (e.message.includes("超时")) {
+            errorMessage = "生成时间较长，您可以在创作时光轴查看处理进度";
+        }
+        // 服务相关错误
+        else if (e.message.includes("服务不可用")) {
             errorMessage = "AI服务暂时不可用，请稍后重试";
-        } else if (e.message.includes("生成已取消")) {
-            errorMessage = "生成已取消，您可以稍后重试";
+        }
+        // 用户取消
+        else if (e.message.includes("生成已取消")) {
+            errorMessage = "生成已取消，您可以在创作时光轴查看处理进度";
+        }
+        // 任务完成但结果异常
+        else if (e.message.includes("任务完成但未生成结果文件")) {
+            errorMessage = "任务处理完成但结果文件异常，请稍后重试";
+        }
+        // 其他未知错误
+        else {
+            errorMessage = "人像复活处理遇到问题，请稍后重试";
         }
         
-        alert(errorMessage);
+        // 只在非用户取消的情况下显示错误提示
+        if (!e.message.includes("生成已取消")) {
+            alert(errorMessage);
+        }
+        
+        // 记录错误日志
+        console.warn('LivePortrait处理错误详情:', {
+            message: e.message,
+            userMessage: errorMessage,
+            timestamp: new Date().toISOString()
+        });
     } finally {
         isProcessing.value = false;
+        loadingMsg.value = '';
+        livePortraitProgress.value = 0;
     }
 };
 const livePortraitParams = ref<LivePortraitParamsType>({
@@ -451,6 +574,116 @@ const livePortraitParams = ref<LivePortraitParamsType>({
   expressionScale: 1.0
 });
 // ---------------------- 灵动·人像复活模块逻辑 End ----------------------
+
+// ---------------------- 维度重塑模块逻辑 Start ----------------------
+const dimensionSculptorParams = ref<DimensionSculptorParamsType>({
+  mode: 'draft',
+  autoTexture: true
+});
+
+const dragOver = ref(false);
+
+const handleDimensionSculptor = async () => {
+  if (!selectedPhotoId.value && !rawFile.value) {
+    alert("请先上传或选择一张照片！");
+    return;
+  }
+
+  isProcessing.value = true;
+  loadingMsg.value = '正在提交3D重塑任务...';
+  resultImage.value = null;
+
+  try {
+    let taskId: number | null = null;
+
+    if (selectedPhotoId.value) {
+      const response = await fetch(`${API_BASE_URL}/workshop/dimension_sculptor/generate`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${localStorage.getItem('token') || ''}`
+        },
+        body: JSON.stringify({
+          photo_id: selectedPhotoId.value,
+          mode: dimensionSculptorParams.value.mode,
+          auto_texture: dimensionSculptorParams.value.autoTexture
+        }),
+      });
+      if (!response.ok) {
+        const err = await response.json();
+        throw new Error(err.detail || '任务创建失败');
+      }
+      const data = await response.json();
+      taskId = data.task_id;
+    } else if (rawFile.value) {
+      const formData = new FormData();
+      formData.append('file', rawFile.value);
+      formData.append('mode', dimensionSculptorParams.value.mode);
+      formData.append('auto_texture', dimensionSculptorParams.value.autoTexture.toString());
+
+      const response = await fetch(`${API_BASE_URL}/workshop/dimension_sculptor/generate`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('token') || ''}`
+        },
+        body: formData,
+      });
+      if (!response.ok) {
+        const err = await response.json();
+        throw new Error(err.detail || '任务创建失败');
+      }
+      const data = await response.json();
+      taskId = data.task_id;
+    }
+
+    if (!taskId) throw new Error('3D任务创建失败');
+
+    // 轮询任务状态
+    let completed = false;
+    const maxPolls = 300; // 最多轮询300秒（5分钟）
+    let pollCount = 0;
+
+    while (!completed && pollCount < maxPolls) {
+      await new Promise(r => setTimeout(r, 2000)); // 每2秒轮询
+      pollCount++;
+
+      const statusRes = await fetch(`${API_BASE_URL}/workshop/tasks/${taskId}`, {
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('token') || ''}`
+        },
+      });
+
+      if (statusRes.ok) {
+        const taskData = await statusRes.json();
+        loadingMsg.value = `3D重塑中... (${taskData.current_step || pollCount}/${taskData.steps?.length || '?'})`;
+
+        if (taskData.status === 'completed') {
+          completed = true;
+          if (taskData.result_path || taskData.result_url) {
+            resultImage.value = getFullImageUrl(taskData.result_path || taskData.result_url);
+          }
+          isProcessing.value = false;
+          loadingMsg.value = '';
+          window.dispatchEvent(new CustomEvent('refresh_histories', {
+            detail: { operation_type: 'dimension_sculptor', media_type: 'model' }
+          }));
+        } else if (taskData.status === 'failed') {
+          throw new Error(taskData.error_message || '3D模型生成失败');
+        }
+      }
+    }
+
+    if (!completed) {
+      throw new Error('3D重塑任务超时，请重试');
+    }
+  } catch (e: any) {
+    console.error('维度重塑错误:', e);
+    isProcessing.value = false;
+    loadingMsg.value = '';
+    alert(`3D重塑失败: ${e.message}`);
+  }
+};
+// ---------------------- 维度重塑模块逻辑 End ----------------------
 
 // 触发上传
 const triggerUpload = () => {
@@ -600,6 +833,8 @@ const isVoiceModule = computed(() => moduleId.value === ModuleStep.VOICE);
 const isLivePortraitModule = computed(() => moduleId.value === ModuleStep.LIVE_PORTRAIT);
 // 判断当前是否为时光引擎模块
 const isTimeEngineModule = computed(() => moduleId.value === ModuleStep.TIME_ENGINE);
+// 判断当前是否为维度重塑模块
+const isDimensionSculptorModule = computed(() => moduleId.value === ModuleStep.DIMENSION_SCULPTOR);
 
 // 判断当前选中的文件是否为视频
 const isVideo = computed(() => {
@@ -829,11 +1064,36 @@ const handleProcess = async () => {
                         // 保存模块状态
                         saveModuleState();
                         
+                        // 发送任务完成通知到消息中心
+                        window.dispatchEvent(new CustomEvent('add-notification', {
+                            detail: {
+                                type: 'success',
+                                title: '时光引擎处理完成',
+                                message: '您的时光引擎任务已处理完成！可以查看生成的多张图片效果。',
+                                taskId: taskId,
+                                action: {
+                                    type: 'navigate',
+                                    route: '/history',
+                                    label: '查看修复历史'
+                                }
+                            }
+                        }));
+                        
                     } else if (currentTask.status === 'failed') {
                         clearInterval(pollInterval);
                         isProcessing.value = false;
                         console.error('引擎执行失败:', currentTask.error_message);
                         alert(`时光引擎执行失败: ${currentTask.error_message}`);
+                        
+                        // 发送任务失败通知到消息中心
+                        window.dispatchEvent(new CustomEvent('add-notification', {
+                            detail: {
+                                type: 'error',
+                                title: '时光引擎处理失败',
+                                message: `抱歉，时光引擎任务处理失败：${currentTask.error_message || '未知错误'}`,
+                                taskId: taskId
+                            }
+                        }));
                     }
                 } catch(e) {
                     console.error("轮询进度出错:", e);
@@ -876,10 +1136,31 @@ const handleProcess = async () => {
                                             `http://localhost:8000${currentTask.result_path}` : 
                                             `http://localhost:8000/static/${currentTask.result_path}`;
                                     }
+                                    
+                                    // 发送任务完成通知到消息中心
+                                    window.dispatchEvent(new CustomEvent('add-notification', {
+                                        detail: {
+                                            type: 'success',
+                                            title: '时光引擎处理完成',
+                                            message: '您的时光引擎任务已处理完成！可以查看生成的多张图片效果。',
+                                            taskId: taskId
+                                        }
+                                    }));
+                                    
                                 } else if (currentTask?.status === 'failed') {
                                     clearInterval(extendedPollInterval);
                                     isProcessing.value = false;
                                     alert(`时光引擎执行失败: ${currentTask.error_message}`);
+                                    
+                                    // 发送任务失败通知到消息中心
+                                    window.dispatchEvent(new CustomEvent('add-notification', {
+                                        detail: {
+                                            type: 'error',
+                                            title: '时光引擎处理失败',
+                                            message: `抱歉，时光引擎任务处理失败：${currentTask.error_message || '未知错误'}`,
+                                            taskId: taskId
+                                        }
+                                    }));
                                 }
                             } catch(e) {
                                 console.warn("扩展轮询遇到网络波动，继续尝试...");
@@ -946,6 +1227,11 @@ const handleProcess = async () => {
     // 如果是灵动·人像复活模块，则执行特殊处理
     if (isLivePortraitModule.value) {
         return handleLivePortraitProcess();
+    }
+    
+    // 如果是维度重塑模块，则执行特殊处理
+    if (isDimensionSculptorModule.value) {
+        return handleDimensionSculptor();
     }
     
     // 检查是否有原始文件对象或已选择的照片ID
@@ -1044,6 +1330,32 @@ const handleProcess = async () => {
             throw new Error("没有可用的图片数据");
         }
         
+        // 发送任务开始通知
+        const moduleNameMap: Record<string, string> = {
+            'dustless': '拂尘修复',
+            'colorize': '流光上色',
+            'qingying': '清影超清',
+            'trueface': '真容精修',
+            'voice': '留音语音',
+            'liveportrait': '灵动人像'
+        };
+        
+        const moduleName = moduleNameMap[moduleIdVal] || '流光上色';
+        
+        window.dispatchEvent(new CustomEvent('add-notification', {
+            detail: {
+                type: 'info',
+                title: '任务开始',
+                message: `您的【${moduleName}】任务已开始处理，请稍候...`,
+                taskId: newTask.id
+            }
+        }));
+        
+        // 触发任务开始事件，让App.vue开始轮询
+        window.dispatchEvent(new CustomEvent('time_trace_task_start', {
+            detail: { taskId: newTask.id }
+        }));
+        
         const poll = async () => {
             try {
                 console.log('开始轮询任务状态，任务ID:', newTask.id);
@@ -1075,11 +1387,59 @@ const handleProcess = async () => {
                         }
                         
                         alert('修复完成！');
+                        
+                        // 发送任务完成通知到消息中心
+                        const moduleNameMap: Record<string, string> = {
+                            'dustless': '拂尘修复',
+                            'colorize': '流光上色',
+                            'qingying': '清影超清',
+                            'trueface': '真容精修',
+                            'voice': '留音语音',
+                            'liveportrait': '灵动人像'
+                        };
+                        
+                        const moduleName = moduleNameMap[moduleIdVal] || '影像修复';
+                        
+                        window.dispatchEvent(new CustomEvent('add-notification', {
+                            detail: {
+                                type: 'success',
+                                title: '修复完成',
+                                message: `您的【${moduleName}】任务已处理完成！可以查看修复效果。`,
+                                taskId: newTask.id,
+                                action: {
+                                    type: 'navigate',
+                                    route: '/history',
+                                    label: '查看修复历史'
+                                }
+                            }
+                        }));
+                        
                     } else if (taskInfo.status === 'failed') {
                         console.log('任务失败');
                         // 设置isProcessing为false
                         isProcessing.value = false;
                         alert(`修复失败: ${taskInfo.error_message || '未知错误'}`);
+                        
+                        // 发送任务失败通知到消息中心
+                        const moduleNameMap: Record<string, string> = {
+                            'dustless': '拂尘修复',
+                            'colorize': '流光上色',
+                            'qingying': '清影超清',
+                            'trueface': '真容精修',
+                            'voice': '留音语音',
+                            'liveportrait': '灵动人像'
+                        };
+                        
+                        const moduleName = moduleNameMap[moduleIdVal] || '影像修复';
+                        
+                        window.dispatchEvent(new CustomEvent('add-notification', {
+                            detail: {
+                                type: 'error',
+                                title: '修复失败',
+                                message: `抱歉，您的【${moduleName}】任务处理失败：${taskInfo.error_message || '未知错误'}`,
+                                taskId: newTask.id
+                            }
+                        }));
                     }
                     
                     // 强制更新isProcessing状态
@@ -1087,16 +1447,16 @@ const handleProcess = async () => {
                     isProcessing.value = false;
                     console.log('更新后的isProcessing:', isProcessing.value);
                 } else {
-                    console.log('任务仍在处理中，状态:', taskInfo.status, '，1.5秒后再次轮询');
-                    setTimeout(poll, 1500);
+                    console.log('任务仍在处理中，状态:', taskInfo.status, '，3秒后再次轮询');
+                    setTimeout(poll, 3000);
                 }
             } catch (e: any) {
                 console.error('轮询任务失败:', e);
                 console.error('错误详情:', JSON.stringify(e, null, 2));
                 
                 // 不要结束处理状态，继续轮询
-                console.log('轮询失败，1.5秒后再次尝试');
-                setTimeout(poll, 1500);
+                console.log('轮询失败，3秒后再次尝试');
+                setTimeout(poll, 3000);
             }
         };
         poll();
@@ -1326,6 +1686,32 @@ const enhanceColor = async () => {
             { ...colorizeParams.value, enhance_only: true } // 仅增强模式
         );
         
+        // 发送任务开始通知
+        const moduleNameMap: Record<string, string> = {
+            'dustless': '拂尘修复',
+            'colorize': '流光上色',
+            'qingying': '清影超清',
+            'trueface': '真容精修',
+            'voice': '留音语音',
+            'liveportrait': '灵动人像'
+        };
+        
+        const moduleName = moduleNameMap[moduleIdVal] || '影像修复';
+        
+        window.dispatchEvent(new CustomEvent('add-notification', {
+            detail: {
+                type: 'info',
+                title: '任务开始',
+                message: `您的【${moduleName}】色彩增强任务已开始处理，请稍候...`,
+                taskId: newTask.id
+            }
+        }));
+        
+        // 触发任务开始事件，让App.vue开始轮询
+        window.dispatchEvent(new CustomEvent('time_trace_task_start', {
+            detail: { taskId: newTask.id }
+        }));
+        
         // 轮询任务状态
         const poll = async () => {
             try {
@@ -1337,17 +1723,47 @@ const enhanceColor = async () => {
                             // 更新结果图片
                             resultImage.value = getFullImageUrl(taskInfo.result_path);
                             alert('色彩增强完成！');
+                            
+                            // 发送任务完成通知到消息中心
+                            window.dispatchEvent(new CustomEvent('add-notification', {
+                                detail: {
+                                    type: 'success',
+                                    title: '色彩增强完成',
+                                    message: `您的【${moduleName}】色彩增强任务已处理完成！可以查看增强效果。`,
+                                    taskId: newTask.id,
+                                action: {
+                                    type: 'navigate',
+                                    route: '/history',
+                                    label: '查看修复历史'
+                                }
+                            }
+                            }));
                         } else {
                             alert('色彩增强完成但没有结果图片');
                         }
                     } else if (taskInfo.status === 'failed') {
                         alert(`色彩增强失败: ${taskInfo.error_message || '未知错误'}`);
+                        
+                        // 发送任务失败通知到消息中心
+                        window.dispatchEvent(new CustomEvent('add-notification', {
+                            detail: {
+                                type: 'error',
+                                title: '色彩增强失败',
+                                message: `抱歉，您的【${moduleName}】色彩增强任务处理失败：${taskInfo.error_message || '未知错误'}`,
+                                taskId: newTask.id,
+                                action: {
+                                    type: 'navigate',
+                                    route: '/history',
+                                    label: '查看修复历史'
+                                }
+                            }
+                        }));
                     }
                     
                     isProcessing.value = false;
                 } else {
-                    // 1.5秒后再次轮询
-                    setTimeout(poll, 1500);
+                    // 3秒后再次轮询
+                    setTimeout(poll, 3000);
                 }
             } catch (error) {
                 console.error('轮询任务状态失败:', error);
@@ -1702,7 +2118,7 @@ const loadHistoryData = async (historyId: number) => {
 </script>
 
 <template>
-  <div v-if="moduleConfig" class="flex h-screen bg-[#FDFCFB] overflow-hidden">
+  <div v-if="moduleConfig" class="flex flex-col lg:flex-row h-screen lg:overflow-hidden bg-[#FDFCFB] overflow-y-auto">
     
     <!-- 引入动态加载器: 传入自定义文字 -->
     <!-- 在LivePortrait模块中隐藏EmotionalLoader，避免重复加载界面 -->
@@ -1714,7 +2130,7 @@ const loadHistoryData = async (historyId: number) => {
     />
 
     <!-- 左侧：沉浸式画布区 (占用大部分空间) -->
-    <div class="flex-1 relative flex flex-col min-w-0 bg-[#F3F4F6]">
+    <div class="w-full lg:flex-1 relative flex flex-col min-w-0 bg-[#F3F4F6] min-h-[50vh] lg:min-h-0 flex-shrink-0">
       <!-- 顶部工具条 -->
       <div class="absolute top-4 left-4 right-4 z-10 flex justify-between items-center pointer-events-none">
         <div class="bg-white/80 backdrop-blur shadow-sm rounded-full px-4 py-2 pointer-events-auto flex items-center gap-2">
@@ -1726,8 +2142,8 @@ const loadHistoryData = async (historyId: number) => {
         
         <!-- 统一的操作按钮组 -->
         <div class="pointer-events-auto flex gap-4 items-center">
-          <!-- 图片操作按钮 (非声音模块显示) -->
-          <div v-if="selectedPhotoUrl && !isVoiceModule" class="flex gap-3">
+          <!-- 图片操作按钮 (非声音/非维度重塑模块显示) -->
+          <div v-if="selectedPhotoUrl && !isVoiceModule && !isDimensionSculptorModule" class="flex gap-3">
             <button 
               @click="clearPhoto"
               class="bg-white/80 backdrop-blur shadow-sm px-5 py-2 rounded-full text-sm text-gray-600 hover:bg-gray-50 transition flex items-center gap-2"
@@ -1781,7 +2197,7 @@ const loadHistoryData = async (historyId: number) => {
       </div>
 
       <!-- 画布核心内容 -->
-      <div class="flex-1 flex items-center justify-center p-8 select-none">
+      <div class="flex-1 flex items-center justify-center p-8 select-none pt-20 lg:pt-8">
         
         <!-- ================= 声音模块 UI ================= -->
         <div v-if="isVoiceModule" class="w-full h-full flex items-center justify-center">
@@ -1827,6 +2243,86 @@ const loadHistoryData = async (historyId: number) => {
         <!-- ================= 图像模块 UI (原有逻辑) ================= -->
         <div v-else class="w-full h-full flex items-center justify-center">
           
+          <!-- ================= 维度重塑 专有界面 ================= -->
+          <template v-if="isDimensionSculptorModule">
+            <!-- 3D 模型生成完成 -->
+            <div v-if="resultImage" class="bg-gradient-to-br from-amber-50 to-orange-50 border-2 border-amber-200 rounded-3xl p-12 text-center max-w-lg mx-auto shadow-2xl shadow-amber-200/50">
+              <div class="w-24 h-24 mx-auto mb-6 bg-gradient-to-br from-amber-300 to-orange-300 rounded-full flex items-center justify-center shadow-lg shadow-amber-300/50 animate-pulse">
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-12 h-12 text-white">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M21 7.5l-9-5.25L3 7.5m18 0l-9 5.25m9-5.25v9l-9 5.25M3 7.5l9 5.25M3 7.5v9l9 5.25m0-9v9" />
+                </svg>
+              </div>
+              <h3 class="text-2xl font-bold text-amber-800 mb-2">3D模型生成完成</h3>
+              <p class="text-amber-600 mb-2 font-medium">单指旋转 · 双指缩放 · 自由探索</p>
+              <p class="text-xs text-amber-400 mb-8 break-all">{{ resultImage }}</p>
+              <a
+                :href="`/model-viewer.html?url=${encodeURIComponent(resultImage)}`"
+                target="_blank"
+                class="inline-flex items-center gap-2 px-8 py-4 bg-gradient-to-r from-amber-500 to-orange-500 text-white rounded-2xl font-bold text-lg shadow-xl shadow-amber-500/30 hover:shadow-amber-500/50 transition-all transform hover:-translate-y-0.5 hover:scale-105"
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-6 h-6">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M21 7.5l-9-5.25L3 7.5m18 0l-9 5.25m9-5.25v9l-9 5.25M3 7.5l9 5.25M3 7.5v9l9 5.25m0-9v9" />
+                </svg>
+                打开 3D 查看器
+              </a>
+            </div>
+
+            <!-- 已上传照片，等待生成 -->
+            <div v-else-if="selectedPhotoUrl" class="w-full h-full flex items-center justify-center p-4">
+              <div class="relative">
+                <img :src="selectedPhotoUrl" class="max-w-full max-h-[60vh] object-contain shadow-2xl rounded-2xl" @click="zoomImage(selectedPhotoUrl, '原图')" />
+                <button
+                  @click="clearPhoto"
+                  class="absolute top-3 right-3 w-9 h-9 bg-white/80 backdrop-blur rounded-full flex items-center justify-center hover:bg-red-50 hover:text-red-500 transition shadow-md"
+                  title="移除照片"
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-5 h-5">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
+              </div>
+            </div>
+
+            <!-- 专属拖拽上传区域 -->
+            <div v-else
+              class="w-full max-w-2xl mx-auto cursor-pointer"
+              @click="triggerUpload"
+              @dragover.prevent="dragOver = true"
+              @dragleave.prevent="dragOver = false"
+              @drop.prevent="dragOver = false; handleDrop($event)"
+            >
+              <div
+                class="relative border-2 border-dashed rounded-[2.5rem] p-16 flex flex-col items-center justify-center transition-all duration-300"
+                :class="dragOver ? 'border-amber-400 bg-amber-50/80 scale-[1.02]' : 'border-amber-200 bg-gradient-to-b from-amber-50/50 to-orange-50/50 hover:border-amber-400 hover:bg-amber-50'"
+              >
+                <!-- 装饰圆圈 -->
+                <div class="absolute inset-0 overflow-hidden rounded-[2.5rem] pointer-events-none">
+                  <div class="absolute -top-24 -right-24 w-64 h-64 rounded-full bg-amber-100/40"></div>
+                  <div class="absolute -bottom-16 -left-16 w-48 h-48 rounded-full bg-orange-100/30"></div>
+                </div>
+
+                <!-- 3D 立方体图标 -->
+                <div class="relative z-10 w-28 h-28 mb-8 bg-white rounded-[2rem] shadow-lg shadow-amber-200/50 flex items-center justify-center group-hover:scale-110 transition-transform duration-500">
+                  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.2" stroke="currentColor" class="w-14 h-14 text-amber-400">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M21 7.5l-9-5.25L3 7.5m18 0l-9 5.25m9-5.25v9l-9 5.25M3 7.5l9 5.25M3 7.5v9l9 5.25m0-9v9" />
+                  </svg>
+                </div>
+
+                <h3 class="relative z-10 text-2xl font-bold text-gray-700 mb-3">拖拽或点击上传照片</h3>
+                <p class="relative z-10 text-base text-gray-400 mb-6">支持 JPG / PNG / WebP，建议使用正面或3/4侧面照</p>
+
+                <div class="relative z-10 inline-flex items-center gap-2 px-6 py-3 bg-white rounded-xl shadow-md border border-amber-200 text-amber-700 font-medium hover:bg-amber-50 transition">
+                  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75V16.5m-13.5-9L12 3m0 0 4.5 4.5M12 3v13.5" />
+                  </svg>
+                  选择照片
+                </div>
+
+                <p class="relative z-10 text-xs text-gray-300 mt-4">最大 10MB</p>
+              </div>
+            </div>
+          </template>
+
           <!-- ================= 时光引擎专属时空穿梭界面 ================= -->
           <template v-if="isTimeEngineModule">
             <!-- 1. 空状态：时空之门 -->
@@ -2033,7 +2529,7 @@ const loadHistoryData = async (historyId: number) => {
           </template>
 
           <!-- ================= 其他模块通用界面 ================= -->
-          <template v-else>
+          <template v-else-if="!isDimensionSculptorModule">
             <!-- 1. 空状态：上传 -->
             <div v-if="!selectedPhotoUrl"
                  class="w-full max-w-3xl"
@@ -2170,7 +2666,7 @@ const loadHistoryData = async (historyId: number) => {
     </div>
 
     <!-- 右侧：控制面板 (Glassy Sidebar) -->
-    <div class="w-96 bg-white border-l border-gray-100 flex flex-col shadow-[-10px_0_30px_rgba(0,0,0,0.02)] z-20">
+    <div class="w-full lg:w-96 bg-white border-t lg:border-t-0 lg:border-l border-gray-100 flex flex-col shadow-[-10px_0_30px_rgba(0,0,0,0.02)] z-20 flex-shrink-0">
       <!-- 头部信息 -->
       <div class="p-8 pb-4">
         <!-- 动态 Icon 颜色 -->
@@ -2192,7 +2688,7 @@ const loadHistoryData = async (historyId: number) => {
         />
 
         <!-- === 图像模块参数 (有 selectedPhotoUrl 才显示) === -->
-        <div v-if="selectedPhotoUrl && !isVoiceModule">
+        <div v-if="selectedPhotoUrl && !isVoiceModule && !isDimensionSculptorModule">
           <!-- 修复模式切换（仅拂尘修复模块显示） -->
           <div v-if="isDustlessModule && !resultImage" class="relative group">
             <button
@@ -2290,6 +2786,12 @@ const loadHistoryData = async (historyId: number) => {
           v-if="isTimeEngineModule"
         />
 
+        <!-- 维度重塑参数 -->
+        <DimensionSculptorParams
+          v-if="isDimensionSculptorModule"
+          v-model:params="dimensionSculptorParams"
+        />
+
         <!-- 记忆注脚 (声音模块不显示) -->
         <div class="pt-6 border-t border-dashed border-gray-200">
           <label class="text-xs font-bold text-gray-400 uppercase tracking-wider mb-3 flex items-center gap-2">
@@ -2306,6 +2808,37 @@ const loadHistoryData = async (historyId: number) => {
       <!-- 底部操作区 -->
       <div class="p-8 pt-4 bg-white border-t border-gray-50">
         
+        <!-- 维度重塑模块按钮 -->
+        <div v-if="isDimensionSculptorModule && selectedPhotoUrl">
+          <!-- 3D 模型生成完成：查看 + 重新生成 -->
+          <div v-if="resultImage" class="flex flex-col gap-3">
+            <a
+              :href="`/model-viewer.html?url=${encodeURIComponent(resultImage)}`"
+              target="_blank"
+              class="w-full py-4 rounded-xl font-bold text-white text-center shadow-xl transition-all transform hover:-translate-y-1 active:scale-95 bg-gradient-to-r from-amber-500 to-orange-500 shadow-amber-500/20 flex items-center justify-center gap-2"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M21 7.5l-9-5.25L3 7.5m18 0l-9 5.25m9-5.25v9l-9 5.25M3 7.5l9 5.25M3 7.5v9l9 5.25m0-9v9" />
+              </svg>
+              查看 3D 模型
+            </a>
+            <button
+              @click="resultImage = null"
+              class="w-full py-3 rounded-xl font-medium text-amber-700 bg-amber-50 hover:bg-amber-100 border border-amber-200 transition"
+            >
+              重新生成
+            </button>
+          </div>
+          <!-- 未开始生成 -->
+          <button v-else
+            @click="handleDimensionSculptor"
+            :disabled="isProcessing"
+            class="w-full py-4 rounded-xl font-bold text-white shadow-xl transition-all transform hover:-translate-y-1 active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed bg-gradient-to-r from-amber-500 to-orange-500 shadow-amber-500/20"
+          >
+            {{ isProcessing ? loadingMsg || '3D重塑中...' : '开始维度重塑' }}
+          </button>
+        </div>
+
         <!-- 声音模块按钮 -->
         <button 
            v-if="isVoiceModule"
@@ -2317,7 +2850,7 @@ const loadHistoryData = async (historyId: number) => {
         </button>
 
         <!-- 图像模块按钮 -->
-        <div v-else-if="selectedPhotoUrl">
+        <div v-else-if="selectedPhotoUrl && !isDimensionSculptorModule">
             <!-- 修复完成后 -->
             <div v-if="resultImage" class="flex flex-col gap-4">
               <button

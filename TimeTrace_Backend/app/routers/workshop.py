@@ -1,16 +1,19 @@
 from fastapi import APIRouter, Depends, HTTPException, BackgroundTasks, Request, Form, UploadFile, File
 from sqlalchemy.orm import Session
+from sqlalchemy.sql import func
 from typing import List, Dict, Any, Optional
 import os
 import uuid
 import json
 import traceback
 import sys
+import time
+import requests
 
 # 添加留音模块路径
 sys.path.append(os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "..", "Module_voiceclone"))
 
-from app.db import get_db
+from app.db import get_db, SessionLocal
 from app.db.models import Photo, Task, TaskStatus, User, Mask, History
 from app.core.config import settings
 from app.worker.tasks import sync_process_repair_task
@@ -393,7 +396,7 @@ async def create_repair_task(
         steps = mapped_steps
         print(f"[DEBUG] 更新后的steps: {steps}")
         
-        valid_modules = ["dustless", "colorize", "clarity", "trueface", "voice", "liveportrait", "time_engine"]
+        valid_modules = ["dustless", "colorize", "clarity", "trueface", "voice", "liveportrait", "time_engine", "dimension_sculptor"]
         if module not in valid_modules:
             print(f"[ERROR] 无效的模块类型: {module}")
             raise HTTPException(status_code=400, detail=f"无效的模块类型: {module}")
@@ -416,10 +419,13 @@ async def create_repair_task(
                 
                 print(f"[DEBUG] 文件保存成功: {file_path}")
                 
+                # 统一为正斜杠的相对路径存储（兼容 Windows/Linux 跨平台部署）
+                db_file_path = os.path.relpath(file_path, os.getcwd()).replace("\\", "/")
+                
                 # 创建照片记录
                 photo = Photo(
                     filename=filename,
-                    original_path=file_path,
+                    original_path=db_file_path,
                     user_id=current_user.id
                 )
                 db.add(photo)
@@ -1012,10 +1018,13 @@ async def live_portrait_generate(
             with open(image_path, "wb") as f:
                 f.write(content)
             
+            # 统一为正斜杠的相对路径存储（兼容 Windows/Linux 跨平台部署）
+            db_image_path = os.path.relpath(image_path, os.getcwd()).replace("\\", "/")
+            
             # 创建照片记录
             new_photo = Photo(
                 filename=filename,
-                original_path=image_path,
+                original_path=db_image_path,
                 user_id=current_user.id
             )
             db.add(new_photo)
@@ -1117,10 +1126,13 @@ async def voice_generate(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
-    """语音生成请求"""
+    """语音生成请求（改进版：通过Task系统处理，确保历史记录正确关联）"""
     try:
-        # 使用 Form(...) 参数构造参数字典
-        params = {
+        print(f"\n[TTS_TASK] 开始TTS任务创建流程")
+        print(f"[TTS_TASK] 用户ID: {current_user.id}, 文本长度: {len(text)}, 模式: {mode}")
+        
+        # 构造任务参数
+        task_params = {
             "text": text,
             "mode": mode,
             "rate": rate,
@@ -1131,10 +1143,9 @@ async def voice_generate(
         
         # 处理参考音频文件
         if ref_audio:
-            print(f"[DEBUG] 检测到参考音频文件: {ref_audio.filename}")
+            print(f"[TTS_TASK] 检测到参考音频文件: {ref_audio.filename}")
             try:
                 import tempfile as tmp_module
-                import os
                 
                 audio_temp_file = tmp_module.NamedTemporaryFile(delete=False, suffix='.wav')
                 content = await ref_audio.read()
@@ -1142,54 +1153,77 @@ async def voice_generate(
                 audio_temp_file.close()
                 
                 file_path = audio_temp_file.name
-                params["ref_audio"] = file_path
-                print(f"[DEBUG] 参考音频已保存为: {file_path}")
+                task_params["ref_audio"] = file_path
+                print(f"[TTS_TASK] 参考音频已保存为: {file_path}")
             except Exception as e:
                 print(f"[ERROR] 处理参考音频失败: {e}")
-                # 如果处理失败，仍然继续，但记录警告
-                params["ref_audio"] = None
+                task_params["ref_audio"] = None
         else:
-            params["ref_audio"] = None
+            task_params["ref_audio"] = None
         
-        # 调试：打印最终参数
-        print(f"[DEBUG] 最终参数: {params}")
+        # 确定操作类型和步骤
+        operation_type = "tts"
+        steps = ["tts"]
+        if mode == "clone" and ref_audio:
+            operation_type = "voice_clone"
+            steps = ["voice_clone"]
         
-        # 特别检查 prompt_text 参数
-        if params.get("prompt_text"):
-            print(f"[SUCCESS] workshop.py: 检测到 prompt_text 参数: {params['prompt_text']}")
-        else:
-            print("[WARNING] workshop.py: prompt_text 参数为空或不存在！")
+        print(f"[TTS_TASK] 操作类型: {operation_type}, 步骤: {steps}")
         
-        # 执行语音生成任务
-        result = execute_voice_task("generate", params)
+        # 创建Task记录（TTS任务不需要photo_id）
+        task = Task(
+            task_type="single",
+            steps=steps,
+            current_step=0,
+            photo_id=None,  # TTS不需要照片
+            user_id=current_user.id,
+            params=task_params,
+            status=TaskStatus.PENDING
+        )
+        
+        db.add(task)
+        db.commit()
+        db.refresh(task)
+        
+        print(f"[TTS_TASK] Task记录已创建: ID={task.id}, 状态={task.status}")
+        
+        # 执行语音生成任务（同步执行以保持兼容性）
+        result = execute_voice_task("generate", task_params)
         
         if result.get("success"):
-            # 保存音频历史记录
+            # 更新任务状态为处理中
+            task.status = TaskStatus.PROCESSING
+            db.commit()
+            
             try:
-                # 生成唯一的音频文件名
+                # 保存音频文件
                 import uuid
                 audio_filename = f"audio_{uuid.uuid4()}.wav"
                 audio_path = os.path.join(settings.UPLOAD_DIR, "audios", audio_filename)
                 
-                # 确保音频目录存在
                 os.makedirs(os.path.dirname(audio_path), exist_ok=True)
                 
-                # 保存音频文件
                 with open(audio_path, "wb") as f:
                     f.write(result.get("data", b""))
                 
-                # 确定操作类型
-                operation_type = "tts"
-                if mode == "clone" and ref_audio:
-                    operation_type = "voice_clone"
+                # 计算相对路径（用于存储和访问）
+                relative_audio_path = f"uploads/audios/{audio_filename}"
                 
-                # 创建历史记录
+                print(f"[TTS_TASK] 音频文件已保存: {audio_filename}, 相对路径: {relative_audio_path}")
+                
+                # 更新任务结果
+                task.result_path = relative_audio_path
+                task.status = TaskStatus.COMPLETED
+                task.completed_at = db.query(func.now()).scalar()
+                
+                # 创建History记录（带task_id关联）✅ 关键修复点
                 history = History(
                     user_id=current_user.id,
+                    task_id=task.id,  # ✅ 关联Task ID
                     media_type="audio",
                     operation_type=operation_type,
-                    input_path=audio_filename,  # 对于文本转语音，输入是文本，这里保存为音频文件名
-                    result_path=f"audios/{audio_filename}",  # 修复：保存完整的相对路径
+                    input_path=text[:100] if text else "",  # 保存输入文本的前100个字符
+                    result_path=relative_audio_path,
                     params={
                         "text": text,
                         "mode": mode,
@@ -1202,20 +1236,41 @@ async def voice_generate(
                 db.add(history)
                 db.commit()
                 
-                print(f"[SUCCESS] 音频历史记录已保存: {audio_filename}")
+                print(f"[SUCCESS] TTS任务完成: Task ID={task.id}, History ID={history.id}, 音频文件={audio_filename}")
                 
             except Exception as e:
-                print(f"[WARNING] 保存音频历史记录失败: {e}")
-                # 历史记录保存失败不影响音频生成结果
+                # 即使历史记录保存失败，也更新任务状态
+                task.status = TaskStatus.COMPLETED
+                task.completed_at = db.query(func.now()).scalar()
+                task.error_message = f"历史记录保存失败: {str(e)}"
+                db.commit()
+                
+                print(f"[WARNING] 保存TTS历史记录失败: {e}")
+                # 继续返回音频数据，不影响用户体验
             
             return Response(
                 content=result.get("data", ""),
-                media_type="audio/wav"
+                media_type="audio/wav",
+                headers={"X-Task-ID": str(task.id)}  # 在响应头中返回task_id供参考
             )
         else:
-            raise HTTPException(status_code=500, detail=result.get("error", "语音生成失败"))
+            # 任务失败
+            task.status = TaskStatus.FAILED
+            error_msg = result.get("error", "语音生成失败")
+            if len(error_msg) > 255:
+                error_msg = error_msg[:252] + "..."
+            task.error_message = error_msg
+            db.commit()
             
+            print(f"[ERROR] TTS任务失败: Task ID={task.id}, 错误: {error_msg}")
+            raise HTTPException(status_code=500, detail=error_msg)
+            
+    except HTTPException:
+        raise
     except Exception as e:
+        print(f"[ERROR] TTS任务异常: {e}")
+        import traceback
+        traceback.print_exc()
         raise HTTPException(status_code=500, detail=f"语音生成请求失败: {str(e)}")
 
 @router.get("/voice/presets")
@@ -1277,3 +1332,320 @@ async def voice_preview(filename: str):
         raise HTTPException(status_code=500, detail=f"获取预览音频失败: {str(e)}")
 
 # print("✓ 留音模块按需启动路由配置完成")  # 注释掉启动时的日志打印
+
+
+# ====================================================================
+# 维度重塑 (2D转3D) - Tripo3D API 集成
+# ====================================================================
+
+from pydantic import BaseModel as PydanticBaseModel
+
+class DimensionSculptorRequest(PydanticBaseModel):
+    image_url: Optional[str] = None
+    photo_id: Optional[int] = None
+    mode: str = "draft"  # draft | refine
+    auto_texture: bool = True
+
+@router.post("/dimension_sculptor/generate", response_model=dict)
+async def generate_3d_model(
+    request: Request,
+    background_tasks: BackgroundTasks,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    """维度重塑 - 2D转3D 生成接口"""
+    try:
+        TRIPO_API_KEY = os.getenv("TRIPO_API_KEY", "")
+        if not TRIPO_API_KEY:
+            raise HTTPException(status_code=500, detail="Tripo3D API密钥未配置，请联系管理员设置 TRIPO_API_KEY 环境变量")
+        
+        # 解析请求数据
+        content_type = request.headers.get("content-type", "")
+        photo_id = None
+        file_path = None
+        mode = "draft"
+        auto_texture = True
+        photo = None
+        
+        if "application/json" in content_type:
+            body = await request.json()
+            photo_id = body.get("photo_id")
+            mode = body.get("mode", "draft")
+            auto_texture = body.get("auto_texture", True)
+        elif "multipart/form-data" in content_type:
+            form = await request.form()
+            file = form.get("file")
+            photo_id_str = form.get("photo_id")
+            if photo_id_str:
+                photo_id = int(photo_id_str)
+            mode = form.get("mode", "draft")
+            auto_texture_str = form.get("auto_texture", "true")
+            auto_texture = auto_texture_str.lower() == "true" if isinstance(auto_texture_str, str) else auto_texture
+            
+            if file and not photo_id:
+                filename = f"3d_input_{uuid.uuid4()}_{file.filename}"
+                file_path = os.path.join(settings.UPLOAD_DIR, "tasks", filename)
+                os.makedirs(os.path.dirname(file_path), exist_ok=True)
+                content = await file.read()
+                with open(file_path, "wb") as f:
+                    f.write(content)
+                db_file_path = os.path.relpath(file_path, os.getcwd()).replace("\\", "/")
+                photo = Photo(filename=filename, original_path=db_file_path, user_id=current_user.id)
+                db.add(photo)
+                db.commit()
+                db.refresh(photo)
+                photo_id = photo.id
+        
+        if not photo_id:
+            raise HTTPException(status_code=400, detail="请提供图片（photo_id 或上传文件）")
+        
+        # 验证图片所有权
+        if not photo:
+            photo = db.query(Photo).filter(Photo.id == photo_id, Photo.user_id == current_user.id).first()
+        if not photo:
+            raise HTTPException(status_code=404, detail="照片不存在或不属于当前用户")
+        
+        # 构建本地图片的公开访问URL
+        local_image_path = photo.original_path.replace("\\", "/")
+        if local_image_path.startswith("static/"):
+            relative = local_image_path[7:]  # 去掉 "static/" 前缀
+        elif local_image_path.startswith("./static/"):
+            relative = local_image_path[10:]
+        else:
+            relative = local_image_path
+        import socket
+        try:
+            hostname = socket.gethostname()
+            local_ip = socket.gethostbyname(hostname)
+        except:
+            local_ip = "localhost"
+        image_url_for_api = f"http://{local_ip}:8000/static/{relative}"
+        
+        print(f"[Tripo3D] 图片公开URL: {image_url_for_api}")
+        
+        # 创建任务记录
+        task_data = {
+            "task_type": "dimension_sculptor",
+            "steps": ["dimension_sculptor"],
+            "current_step": 0,
+            "photo_id": photo_id,
+            "user_id": current_user.id,
+            "mask_id": None,
+            "status": TaskStatus.PENDING,
+            "step_results": [],
+            "params": {
+                "mode": mode,
+                "auto_texture": auto_texture,
+                "image_url": image_url_for_api
+            }
+        }
+        
+        task = Task(**task_data)
+        db.add(task)
+        db.commit()
+        db.refresh(task)
+        
+        print(f"[Tripo3D] 任务创建成功: ID={task.id}, mode={mode}")
+        
+        # 后台异步处理
+        background_tasks.add_task(
+            process_dimension_sculptor,
+            task_id=task.id,
+            image_url=image_url_for_api,
+            mode=mode,
+            auto_texture=auto_texture,
+            api_key=TRIPO_API_KEY
+        )
+        
+        return {
+            "task_id": task.id,
+            "status": "pending",
+            "message": "已加入3D重塑队列，请稍候..."
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        print(f"[Tripo3D ERROR] {e}")
+        traceback.print_exc()
+        raise HTTPException(status_code=500, detail=f"3D生成请求失败: {str(e)}")
+
+
+def process_dimension_sculptor(task_id: int, image_url: str, mode: str, auto_texture: bool, api_key: str):
+    """后台处理 2D转3D 任务（在 BackgroundTasks 线程中执行）"""
+    db = SessionLocal()
+    task = None
+    try:
+        task = db.query(Task).filter(Task.id == task_id).first()
+        if not task:
+            print(f"[Tripo3D] 任务不存在: {task_id}")
+            return
+        
+        task.status = TaskStatus.PROCESSING
+        db.commit()
+        
+        print(f"[Tripo3D] 开始处理任务 {task_id}, mode={mode}")
+        
+        api_base = "https://api.tripo3d.ai/v2/openapi"
+        headers = {"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"}
+        
+        # Step 1: 创建 Tripo3D 生成任务
+        print(f"[Tripo3D] 步骤1: 提交生成任务...")
+        create_resp = requests.post(
+            f"{api_base}/task",
+            headers=headers,
+            json={
+                "type": "image_to_model",
+                "file": {"url": image_url},
+                "model_version": "v2.0-20250221",
+            },
+            timeout=30
+        )
+        if create_resp.status_code != 200:
+            raise Exception(f"Tripo3D 创建任务失败: {create_resp.status_code} {create_resp.text}")
+        
+        create_data = create_resp.json()
+        if create_data.get("code") != 0:
+            raise Exception(f"Tripo3D 返回错误: {create_data.get('message', '未知错误')}")
+        
+        tripo_task_id = create_data["data"]["task_id"]
+        print(f"[Tripo3D] Tripo3D任务ID: {tripo_task_id}")
+        
+        # Step 2: 轮询等待生成完成
+        max_polls = 60 if mode == "draft" else 120  # 草模约10秒，精修约2分钟
+        poll_interval = 3 if mode == "draft" else 5
+        
+        for i in range(max_polls):
+            time.sleep(poll_interval)
+            status_resp = requests.get(
+                f"{api_base}/task/{tripo_task_id}",
+                headers=headers,
+                timeout=15
+            )
+            if status_resp.status_code != 200:
+                print(f"[Tripo3D] 轮询失败: {status_resp.status_code}")
+                continue
+            
+            status_data = status_resp.json()
+            tripo_status = status_data.get("data", {}).get("status", "")
+            tripo_progress = status_data.get("data", {}).get("progress", 0)
+            print(f"[Tripo3D] 轮询 #{i+1}: status={tripo_status}, progress={tripo_progress}%")
+            
+            task.progress_msg = f"3D生成中... {tripo_progress}%"
+            task.current_step = min(tripo_progress // 5, 19)
+            db.commit()
+            
+            if tripo_status == "success":
+                output_data = status_data["data"]["output"]
+                print(f"[Tripo3D] 生成完成! output keys: {list(output_data.keys())}")
+                
+                # 获取草模URL
+                model_url = output_data.get("model") or output_data.get("glb") or output_data.get("obj")
+                if not model_url:
+                    all_keys = list(output_data.keys())
+                    for k in all_keys:
+                        if isinstance(output_data[k], str) and output_data[k].startswith("http"):
+                            model_url = output_data[k]
+                            break
+                
+                if not model_url:
+                    raise Exception(f"Tripo3D 未返回模型文件URL，可用字段: {list(output_data.keys())}")
+                
+                # Step 3: 如果需要精修
+                if mode == "refine" and not output_data.get("refined_model"):
+                    print(f"[Tripo3D] 步骤3: 启动精修...")
+                    refine_resp = requests.post(
+                        f"{api_base}/task/{tripo_task_id}/refine",
+                        headers=headers,
+                        json={"texture": auto_texture, "pbr": auto_texture},
+                        timeout=30
+                    )
+                    if refine_resp.status_code == 200:
+                        refine_data = refine_resp.json()
+                        if refine_data.get("code") == 0:
+                            print(f"[Tripo3D] 精修任务已提交，等待完成...")
+                            for j in range(max_polls):
+                                time.sleep(poll_interval)
+                                r_status = requests.get(f"{api_base}/task/{tripo_task_id}", headers=headers, timeout=15)
+                                if r_status.status_code == 200:
+                                    r_data = r_status.json()
+                                    r_stat = r_data.get("data", {}).get("status", "")
+                                    if r_stat == "success":
+                                        r_output = r_data["data"]["output"]
+                                        model_url = r_output.get("refined_model") or r_output.get("model") or model_url
+                                        print(f"[Tripo3D] 精修完成!")
+                                        break
+                                    elif r_stat == "failed":
+                                        print(f"[Tripo3D] 精修失败，将使用草模")
+                                        break
+                    else:
+                        print(f"[Tripo3D] 精修请求失败，将使用草模: {refine_resp.text}")
+                
+                # Step 4: 下载模型到本地
+                print(f"[Tripo3D] 步骤4: 下载模型文件... model_url={model_url}")
+                download_resp = requests.get(model_url, headers=headers, timeout=120, stream=True)
+                if download_resp.status_code != 200:
+                    raise Exception(f"模型下载失败: {download_resp.status_code}")
+                
+                result_dir = os.path.join(settings.STATIC_DIR, "results", "3d")
+                os.makedirs(result_dir, exist_ok=True)
+                
+                # 确定文件扩展名
+                content_type_header = download_resp.headers.get("content-type", "")
+                if "glb" in model_url.lower() or "model/gltf" in content_type_header:
+                    ext = ".glb"
+                elif "obj" in model_url.lower():
+                    ext = ".obj"
+                else:
+                    ext = ".glb"
+                
+                result_filename = f"3d_{task_id}_{uuid.uuid4().hex[:8]}{ext}"
+                result_path = os.path.join(result_dir, result_filename)
+                
+                with open(result_path, "wb") as f:
+                    for chunk in download_resp.iter_content(chunk_size=8192):
+                        if chunk:
+                            f.write(chunk)
+                
+                print(f"[Tripo3D] 模型已保存: {result_path}")
+                
+                # 更新任务为完成
+                db_result_path = os.path.relpath(result_path, os.getcwd()).replace("\\", "/")
+                task.result_path = db_result_path
+                task.status = TaskStatus.COMPLETED
+                task.current_step = 100
+                task.step_results = [{"type": "3d_model", "path": db_result_path, "format": ext}]
+                task.progress_msg = "3D模型生成完成"
+                db.commit()
+                
+                # 写入历史记录
+                photo = db.query(Photo).filter(Photo.id == task.photo_id).first()
+                history = History(
+                    user_id=task.user_id,
+                    task_id=task.id,
+                    module="dimension_sculptor",
+                    input_path=photo.original_path if photo else "",
+                    result_path=db_result_path,
+                    params=task.params
+                )
+                db.add(history)
+                db.commit()
+                
+                print(f"[Tripo3D] ✅ 任务 {task_id} 完成!")
+                return
+                
+            elif tripo_status == "failed":
+                raise Exception(f"Tripo3D 生成失败: {status_data.get('data', {}).get('message', '未知错误')}")
+        
+        raise Exception(f"Tripo3D 生成超时（{max_polls * poll_interval}秒）")
+        
+    except Exception as e:
+        print(f"[Tripo3D ERROR] 任务 {task_id} 失败: {e}")
+        traceback.print_exc()
+        if task:
+            task.status = TaskStatus.FAILED
+            task.progress_msg = str(e)[:200]
+            db.commit()
+    finally:
+        if db:
+            db.close()

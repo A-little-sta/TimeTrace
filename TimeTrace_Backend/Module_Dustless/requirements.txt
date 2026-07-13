@@ -1,50 +1,101 @@
-# === 拂尘模块依赖配置 (仅Rama模型) ===
-# 优化后的依赖配置，仅包含Rama模型所需的核心依赖
-
-# === 核心深度学习框架 ===
-torch==2.1.2+cu118
-torchvision==0.16.2+cu118
-
-# === 图像处理 ===
-opencv-python==4.8.1.78
-Pillow==10.1.0
-scikit-image==0.21.0
-numpy==1.24.3
-scipy==1.10.1
-albumentations==1.3.1
-
-# === 工具和工具包 ===
-PyYAML==6.0.1
-tqdm==4.65.0
-einops==0.7.0
+accelerate==1.12.0
+aiohappyeyeballs==2.6.1
+aiohttp==3.13.3
+aiosignal==1.4.0
+annotated-doc==0.0.4
+annotated-types==0.7.0
+antlr4-python3-runtime==4.9.3
+anyio==4.12.1
+async-timeout==5.0.1
+attrs==25.4.0
+bidict==0.23.1
+certifi==2026.1.4
+charset-normalizer==3.4.4
+click==8.3.1
+colorama==0.4.6
+contourpy==1.3.2
+cycler==0.12.1
+diffusers==0.27.2
+dill==0.4.1
+dominate==2.9.1
+easydict==1.13
+einops==0.8.2
+exceptiongroup==1.3.1
+fastapi==0.128.0
+filelock==3.20.3
+fonttools==4.61.1
+frozenlist==1.8.0
+fsspec==2026.1.0
+h11==0.16.0
+hf-xet==1.2.0
+httpcore==1.0.9
+httpx==0.28.1
+huggingface_hub==1.3.4
+idna==3.11
+ImageIO==2.37.2
+importlib_metadata==8.7.1
+Jinja2==3.1.6
+kiwisolver==1.4.9
+lazy_loader==0.4
+lightning-utilities==0.15.2
+loguru==0.7.3
+markdown-it-py==4.0.0
+MarkupSafe==3.0.3
+matplotlib==3.10.8
+mdurl==0.1.2
+mkl_fft==2.1.1
+mkl_random==1.3.0
+mkl-service==2.5.2
+mpmath==1.3.0
+multidict==6.7.1
+networkx==3.4.2
+numpy==1.26.4
 omegaconf==2.3.0
-easydict==1.10
-hydra-core==1.3.2
-pytorch-lightning==2.0.9
-kornia==0.6.7
-
-# === 其他依赖 ===
-typer==0.9.0
-rich==13.7.0
-loguru==0.7.2
-yacs==0.1.8
+opencv-python==4.8.1.78
+packaging==26.0
 piexif==1.1.3
-
-# === Bringing-Old-Photos-Back-to-Life-master 依赖 ===
-dlib==19.24.2
-dominate==2.8.0
-dill==0.3.7
-tensorboardX==2.6.2.2
-PySimpleGUI==4.60.5
-matplotlib==3.7.2
-
-# === 可选依赖 (根据需要安装) ===
-# gradio==4.21.0  # 如果需要Web界面
-# controlnet-aux==0.0.3  # 如果需要ControlNet
-# peft==0.7.1  # 如果需要参数高效微调
-
-# === 注意 ===
-# 1. 此配置已兼容两个主要模块
-# 2. 使用PyTorch 2.0.1以获得最佳兼容性
-# 3. 所有版本都经过兼容性测试
-# 4. 如果需要GPU加速，请确保已安装对应的CUDA工具包
+pillow==12.1.0
+propcache==0.4.1
+protobuf==6.33.4
+psutil==7.2.2
+pydantic==2.12.5
+pydantic_core==2.41.5
+Pygments==2.19.2
+pyparsing==3.3.2
+PySimpleGUI==5.0.8.3
+python-dateutil==2.9.0.post0
+python-engineio==4.13.0
+python-multipart==0.0.22
+python-socketio==5.16.0
+pytorch-lightning==2.6.0
+PyYAML==6.0.3
+regex==2026.1.15
+requests==2.32.5
+rich==14.3.1
+safetensors==0.7.0
+scikit-image==0.25.2
+scipy==1.15.3
+shellingham==1.5.4
+simple-websocket==1.1.0
+six==1.17.0
+starlette==0.50.0
+sympy==1.14.0
+tensorboardX==2.6.4
+tifffile==2025.5.10
+tokenizers==0.22.2
+torch==2.1.2+cu118
+torchmetrics==1.8.2
+torchvision==0.16.2+cu118
+tqdm==4.67.1
+transformers==5.0.0
+typer==0.21.1
+typer-slim==0.21.1
+typing_extensions==4.15.0
+typing-inspection==0.4.2
+urllib3==2.6.3
+uvicorn==0.40.0
+win32_setctime==1.2.0
+wsproto==1.3.2
+yacs==0.1.8
+yarl==1.22.0
+zipp==3.23.0

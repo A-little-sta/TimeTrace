@@ -9,8 +9,16 @@ import ImageCompare from '../components/ImageCompare.vue';
 const histories = ref<History[]>([]);
 const selectedHistory = ref<History | null>(null);
 const isLoading = ref(false);
+const isLoadingMore = ref(false);
+const hasMore = ref(true);
+const currentPage = ref(0);
+const pageSize = 20;
 const router = useRouter();
 const authStore = useAuthStore();
+
+// 批量删除相关
+const selectedHistoryIds = ref<number[]>([]);
+const isSelectMode = ref(false);
 
 // 正在修复中的任务
 const processingTasks = ref<Array<{
@@ -282,7 +290,8 @@ const operationTypeMap: Record<string, string> = {
   'live_portrait': '灵动',
   'liveportrait': '灵动',          // 新增
   'liveportrait_video': '灵动',     // 新增
-  'time_engine': '时光引擎'        // 新增
+  'time_engine': '时光引擎',        // 新增
+  'dimension_sculptor': '维度重塑'   // 新增
 };
 
 // 操作类型到模块ID的映射
@@ -297,7 +306,8 @@ const operationToModuleMap: Record<string, string> = {
   'live_portrait': 'live_portrait',
   'liveportrait': 'live_portrait',
   'liveportrait_video': 'live_portrait',
-  'time_engine': 'time_engine'
+  'time_engine': 'time_engine',
+  'dimension_sculptor': 'dimension_sculptor'
 };
 
 // 获取历史记录对应的模块ID
@@ -318,11 +328,27 @@ const mediaTypeMap: Record<string, string> = {
   'video': '视频'
 };
 
-const loadHistories = async () => {
-  isLoading.value = true;
+const loadHistories = async (loadMore = false) => {
+  if (loadMore) {
+    isLoadingMore.value = true;
+  } else {
+    isLoading.value = true;
+    currentPage.value = 0;
+    histories.value = [];
+  }
+  
   try {
-    const data = await api.getHistories();
-    histories.value = data;
+    const skip = currentPage.value * pageSize;
+    const data = await api.getHistories(skip, pageSize);
+    
+    if (loadMore) {
+      histories.value = [...histories.value, ...data];
+    } else {
+      histories.value = data;
+    }
+    
+    // 检查是否还有更多数据
+    hasMore.value = data.length === pageSize;
     
     // 检查是否有正在进行的任务
     checkProcessingTasks();
@@ -334,8 +360,20 @@ const loadHistories = async () => {
   } catch (error) {
     console.error("Failed to load histories", error);
   } finally {
-    isLoading.value = false;
+    if (loadMore) {
+      isLoadingMore.value = false;
+    } else {
+      isLoading.value = false;
+    }
   }
+};
+
+// 加载更多历史记录
+const loadMoreHistories = async () => {
+  if (isLoadingMore.value || !hasMore.value) return;
+  
+  currentPage.value += 1;
+  await loadHistories(true);
 };
 
 // 清空所有历史记录
@@ -373,10 +411,20 @@ const selectHistory = (history: History) => {
   resetAudioState();
   
   selectedHistory.value = history;
+  
+  // 发送事件通知侧边栏隐藏
+  window.dispatchEvent(new CustomEvent('time_trace_hide_sidebar', {
+    detail: { hide: true }
+  }));
 };
 
 const closeDetail = () => {
   selectedHistory.value = null;
+  
+  // 发送事件通知侧边栏显示
+  window.dispatchEvent(new CustomEvent('time_trace_hide_sidebar', {
+    detail: { hide: false }
+  }));
 };
 
 // 确认删除历史记录（从列表）
@@ -406,9 +454,76 @@ const deleteHistoryById = async (historyId: number) => {
       selectedHistory.value = null;
     }
     
+    // 从选中列表中移除
+    selectedHistoryIds.value = selectedHistoryIds.value.filter(id => id !== historyId);
+    
     alert('删除成功！');
   } catch (error) {
     console.error('删除历史记录失败:', error);
+    alert('删除失败，请稍后重试');
+  }
+};
+
+// 批量删除相关函数
+const toggleSelect = (historyId: number) => {
+  const index = selectedHistoryIds.value.indexOf(historyId);
+  if (index === -1) {
+    selectedHistoryIds.value.push(historyId);
+  } else {
+    selectedHistoryIds.value.splice(index, 1);
+  }
+};
+
+const toggleSelectAll = () => {
+  if (selectedHistoryIds.value.length === histories.value.length) {
+    selectedHistoryIds.value = [];
+  } else {
+    selectedHistoryIds.value = histories.value.map(h => h.id);
+  }
+};
+
+const enterSelectMode = () => {
+  isSelectMode.value = true;
+};
+
+const exitSelectMode = () => {
+  isSelectMode.value = false;
+  selectedHistoryIds.value = [];
+};
+
+const batchDelete = async () => {
+  if (selectedHistoryIds.value.length === 0) {
+    alert('请先选择要删除的记录');
+    return;
+  }
+  
+  // 保存删除数量（在清空之前）
+  const deleteCount = selectedHistoryIds.value.length;
+  
+  if (!confirm(`确定要删除选中的 ${deleteCount} 条记录吗？\n\n此操作无法撤销。`)) {
+    return;
+  }
+  
+  try {
+    // 逐个删除选中的记录
+    for (const id of selectedHistoryIds.value) {
+      await api.deleteHistory(id);
+    }
+    
+    // 从列表中移除已删除的记录
+    histories.value = histories.value.filter(h => !selectedHistoryIds.value.includes(h.id));
+    
+    // 如果当前查看的详情是被删除的记录，关闭详情模态框
+    if (selectedHistory.value && selectedHistoryIds.value.includes(selectedHistory.value.id)) {
+      selectedHistory.value = null;
+    }
+    
+    // 退出选择模式
+    exitSelectMode();
+    
+    alert(`成功删除 ${deleteCount} 条记录！`);
+  } catch (error) {
+    console.error('批量删除历史记录失败:', error);
     alert('删除失败，请稍后重试');
   }
 };
@@ -500,18 +615,62 @@ onMounted(() => {
   
   loadHistories();
   
+  // 检查是否有待处理的刷新请求（例如音频生成后）
+  checkPendingRefresh();
+  
   // 监听任务开始事件
   window.addEventListener('time_trace_task_start', handleTaskStart);
   
   // 监听通知事件
   window.addEventListener('time_trace_notification', handleNotification);
+  
+  // 监听历史记录刷新事件（用于音频生成后刷新）
+  window.addEventListener('refresh_histories', handleRefreshHistories);
 });
+
+// 检查待处理的刷新请求
+const checkPendingRefresh = () => {
+  try {
+    const pendingRefresh = localStorage.getItem('time_trace_pending_refresh');
+    if (pendingRefresh) {
+      const refreshData = JSON.parse(pendingRefresh);
+      // 检查是否是最近的刷新请求（5分钟内）
+      if (Date.now() - refreshData.timestamp < 5 * 60 * 1000) {
+        console.log('检测到待处理的刷新请求:', refreshData);
+        // 延迟刷新，让页面先加载完成
+        setTimeout(() => {
+          refreshHistories();
+        }, 500);
+      }
+      // 清除刷新标记
+      localStorage.removeItem('time_trace_pending_refresh');
+    }
+  } catch (e) {
+    console.warn('检查待处理刷新失败:', e);
+  }
+};
 
 onUnmounted(() => {
   stopTaskPolling();
   window.removeEventListener('time_trace_task_start', handleTaskStart);
   window.removeEventListener('time_trace_notification', handleNotification);
+  window.removeEventListener('refresh_histories', handleRefreshHistories);
 });
+
+// 处理历史记录刷新事件
+const handleRefreshHistories = (event: CustomEvent) => {
+  console.log('收到历史记录刷新事件:', event.detail);
+  // 重新加载历史记录
+  refreshHistories();
+};
+
+// 刷新历史记录
+const refreshHistories = () => {
+  histories.value = [];
+  currentPage.value = 0;
+  hasMore.value = true;
+  loadHistories();
+};
 
 // 处理任务开始事件
 const handleTaskStart = (event: CustomEvent) => {
@@ -531,23 +690,89 @@ const handleNotification = (event: CustomEvent) => {
   <div class="p-8 md:p-12 max-w-7xl mx-auto min-h-full flex flex-col animate-fade-in bg-gradient-to-br from-gray-50 to-white">
     <!-- Header -->
     <div class="mb-12">
+      <!-- 批量选择模式顶部栏 -->
+      <div v-if="isSelectMode" class="mb-6 p-4 bg-gradient-to-r from-primary-50 to-amber-50 rounded-2xl border border-primary-100">
+        <div class="flex items-center justify-between">
+          <div class="flex items-center gap-4">
+            <button 
+              @click="toggleSelectAll"
+              class="flex items-center gap-2 px-4 py-2 bg-white rounded-xl border border-primary-200 hover:border-primary-400 transition-colors"
+            >
+              <svg 
+                xmlns="http://www.w3.org/2000/svg" 
+                fill="none" 
+                viewBox="0 0 24 24" 
+                stroke-width="1.5" 
+                stroke="currentColor" 
+                class="w-5 h-5 text-primary-600"
+              >
+                <path 
+                  v-if="selectedHistoryIds.length === histories.length && histories.length > 0"
+                  stroke-linecap="round" 
+                  stroke-linejoin="round" 
+                  d="M4.5 12.75l6 6 9-13.5" 
+                />
+                <path 
+                  v-else
+                  stroke-linecap="round" 
+                  stroke-linejoin="round" 
+                  d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" 
+                />
+              </svg>
+              <span class="text-sm font-medium text-gray-700">{{ selectedHistoryIds.length }}/{{ histories.length }} 已选择</span>
+            </button>
+            <button 
+              @click="exitSelectMode"
+              class="px-4 py-2 text-gray-600 hover:text-gray-800 text-sm font-medium"
+            >
+              取消选择
+            </button>
+          </div>
+          <button 
+            @click="batchDelete"
+            :disabled="selectedHistoryIds.length === 0"
+            class="px-6 py-2 bg-gradient-to-r from-red-500 to-orange-500 hover:from-red-600 hover:to-orange-600 text-white rounded-xl text-sm font-medium transition-all shadow-lg shadow-red-500/30 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-4 h-4">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M14.74 9l-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 01-2.244 2.077H8.084a2.25 2.25 0 01-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 00-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 013.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 00-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 00-7.5 0" />
+            </svg>
+            批量删除 ({{ selectedHistoryIds.length }})
+          </button>
+        </div>
+      </div>
+      
       <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
           <h1 class="text-4xl font-serif-title font-bold text-gray-900 tracking-tight mb-3">创作时光轴</h1>
           <p class="text-gray-500 font-light text-lg">记录您所有的修复与创作历程</p>
         </div>
         
-        <!-- 清空按钮 -->
-        <button 
-          v-if="histories.length > 0"
-          @click="clearAllHistories"
-          class="px-6 py-2 bg-red-500 hover:bg-red-600 text-white rounded-xl text-sm font-medium transition-colors shadow-md hover:shadow-lg flex items-center gap-2"
-        >
-          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-4 h-4">
-            <path stroke-linecap="round" stroke-linejoin="round" d="M14.74 9l-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 01-2.244 2.077H8.084a2.25 2.25 0 01-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 00-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 013.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 00-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 00-7.5 0" />
-          </svg>
-          清空所有记录
-        </button>
+        <!-- 操作按钮 -->
+        <div class="flex gap-3">
+          <!-- 选择模式按钮 -->
+          <button 
+            v-if="histories.length > 0 && !isSelectMode"
+            @click="enterSelectMode"
+            class="px-6 py-2 bg-white border-2 border-primary-300 hover:border-primary-500 text-primary-600 rounded-xl text-sm font-medium transition-colors flex items-center gap-2"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-4 h-4">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
+            </svg>
+            批量选择
+          </button>
+          
+          <!-- 清空按钮 -->
+          <button 
+            v-if="histories.length > 0"
+            @click="clearAllHistories"
+            class="px-6 py-2 bg-gradient-to-r from-red-500 to-orange-500 hover:from-red-600 hover:to-orange-600 text-white rounded-xl text-sm font-medium transition-all shadow-lg shadow-red-500/30 flex items-center gap-2"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-4 h-4">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M14.74 9l-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 01-2.244 2.077H8.084a2.25 2.25 0 01-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 00-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 013.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 00-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 00-7.5 0" />
+            </svg>
+            清空所有记录
+          </button>
+        </div>
       </div>
     </div>
 
@@ -612,10 +837,36 @@ const handleNotification = (event: CustomEvent) => {
       <div 
         v-for="(history, index) in histories" 
         :key="history.id" 
-        class="group relative aspect-[3/4] rounded-3xl overflow-hidden bg-white shadow-sm hover:shadow-[0_20px_40px_-15px_rgba(207,176,123,0.3)] hover:-translate-y-2 transition-all duration-500 animate-fade-in cursor-pointer"
+        :class="[
+          'group relative aspect-[3/4] rounded-3xl overflow-hidden bg-white shadow-sm transition-all duration-500 animate-fade-in',
+          isSelectMode ? 'cursor-default' : 'hover:shadow-[0_20px_40px_-15px_rgba(207,176,123,0.3)] hover:-translate-y-2 cursor-pointer',
+          selectedHistoryIds.includes(history.id) ? 'ring-4 ring-primary-500 shadow-[0_0_0_4px_rgba(207,176,123,0.3)]' : ''
+        ]"
         :style="{ animationDelay: `${index * 50}ms` }"
-        @click="selectHistory(history)"
+        @click="isSelectMode ? toggleSelect(history.id) : selectHistory(history)"
       >
+        <!-- 选择框 -->
+        <div 
+          v-if="isSelectMode"
+          @click.stop="toggleSelect(history.id)"
+          class="absolute top-3 left-3 w-7 h-7 rounded-full border-2 flex items-center justify-center z-20 cursor-pointer transition-all"
+          :class="selectedHistoryIds.includes(history.id) 
+            ? 'bg-primary-500 border-primary-500 shadow-lg shadow-primary-500/50' 
+            : 'bg-white/90 backdrop-blur-sm border-gray-300 hover:border-primary-400 hover:bg-white'"
+        >
+          <svg 
+            v-if="selectedHistoryIds.includes(history.id)"
+            xmlns="http://www.w3.org/2000/svg" 
+            fill="none" 
+            viewBox="0 0 24 24" 
+            stroke-width="2" 
+            stroke="currentColor" 
+            class="w-4 h-4 text-white"
+          >
+            <path stroke-linecap="round" stroke-linejoin="round" d="M4.5 12.75l6 6 9-13.5" />
+          </svg>
+        </div>
+        
         <!-- 音频历史记录 -->
         <div v-if="history.media_type === 'audio' || history.result_url?.endsWith('.wav') || history.result_url?.endsWith('.mp3') || history.operation_type === 'voice' || history.operation_type === 'voice_clone' || history.operation_type === 'tts'" class="w-full h-full bg-gradient-to-br from-primary-50 to-primary-100 flex flex-col items-center justify-center p-6">
           <div class="w-16 h-16 mb-4 text-primary-500">
@@ -651,7 +902,8 @@ const handleNotification = (event: CustomEvent) => {
           v-else
           :src="history.result_url" 
           :alt="`修复结果 ${index + 1}`" 
-          class="w-full h-full object-cover transform group-hover:scale-105 transition-transform duration-700 ease-in-out" 
+          class="w-full h-full object-cover transition-transform duration-700 ease-in-out"
+          :class="isSelectMode ? '' : 'group-hover:scale-105'"
         />
         
         <div class="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex flex-col justify-end p-4">
@@ -671,6 +923,7 @@ const handleNotification = (event: CustomEvent) => {
             <div class="flex items-center gap-2">
               <!-- 删除按钮 -->
               <button 
+                v-if="!isSelectMode"
                 @click.stop="confirmDeleteHistory(history)"
                 class="w-8 h-8 rounded-full bg-red-500/30 flex items-center justify-center backdrop-blur-sm hover:bg-red-500/50 transition-colors"
               >
@@ -679,7 +932,7 @@ const handleNotification = (event: CustomEvent) => {
                 </svg>
               </button>
               <!-- 查看详情按钮 -->
-              <div class="w-8 h-8 rounded-full bg-white/20 flex items-center justify-center backdrop-blur-sm">
+              <div v-if="!isSelectMode" class="w-8 h-8 rounded-full bg-white/20 flex items-center justify-center backdrop-blur-sm">
                 <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-4 h-4 text-white">
                   <path stroke-linecap="round" stroke-linejoin="round" d="M2.036 12.322a1.012 1.012 0 010-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.963-7.178z" />
                   <path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
@@ -689,6 +942,26 @@ const handleNotification = (event: CustomEvent) => {
           </div>
         </div>
       </div>
+    </div>
+
+    <!-- 加载更多按钮 -->
+    <div v-if="hasMore || isLoadingMore" class="mt-8 text-center">
+      <button 
+        @click="loadMoreHistories"
+        :disabled="isLoadingMore"
+        class="px-8 py-3 bg-primary-500 hover:bg-primary-600 text-white rounded-xl text-sm font-medium transition-colors shadow-md hover:shadow-lg disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 mx-auto"
+      >
+        <span v-if="isLoadingMore">
+          <svg class="animate-spin h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+          </svg>
+          加载中...
+        </span>
+        <span v-else>
+          加载更多历史记录
+        </span>
+      </button>
     </div>
 
     <!-- Detail Modal -->

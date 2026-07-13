@@ -35,12 +35,12 @@
               AI 多模态影像修复系统
             </div>
             
-            <h1 class="font-serif text-7xl md:text-[6.5rem] font-bold text-slate-900 mb-8 leading-tight tracking-tight drop-shadow-sm">
-              岁月<span class="text-transparent bg-clip-text bg-gradient-to-r from-amber-600 via-yellow-500 to-amber-500 italic pr-4">笺影</span>
-            </h1>
+            <h1 class="font-serif text-7xl md:text-[6.5rem] font-bold text-[#4A4035] mb-8 leading-tight tracking-tight drop-shadow-sm">
+          影像<span class="text-transparent bg-clip-text bg-gradient-to-r from-[#8C7355] via-[#A68966] to-[#C9B598] italic pr-4">新生</span>
+        </h1>
             
             <p class="text-xl md:text-2xl text-slate-500 font-light leading-relaxed max-w-3xl mx-auto">
-              基于先进 AI 节点流工作流，让珍贵的老照片重获新生。<br class="hidden md:block"/>重现时光的温度与色彩。
+              基于先进 AI 节点流工作流，智能修复各类受损影像。<br class="hidden md:block"/>从老照片到现代数码照片，让每一张影像都焕发新生。
             </p>
           </div>
           
@@ -259,14 +259,14 @@ const features = [
     icon: 'fa-solid fa-hourglass-half',
     title: '时光引擎 · 智能重生',
     shortTitle: '时光引擎',
-    subtitle: '基于Flux模型的AIGC智能修复，一键式解决严重破损照片，让岁月痕迹消失无踪。',
+    subtitle: '基于Flux模型的AIGC智能修复，一键式解决各类严重受损影像，让岁月痕迹消失无踪。',
     scenes: [
       '严重破损、撕裂、霉变的老照片修复',
-      '大面积褪色、模糊、失真的照片重生',
-      '需要整体重构和细节重绘的珍贵照片'
+      '大面积褪色、模糊、失真的现代照片重生',
+      '需要整体重构和细节重绘的各类影像'
     ],
-    beforeImage: './assets/images/AI前.png', 
-    afterImage: './assets/images/AI后.png',
+    beforeImage: '/images/ai_before.png', 
+    afterImage: '/images/ai_after.png',
     demoDesc: '拖动滑块查看：AI 如何重绘严重破损的照片',
     limitations: '时光引擎会基于AI理解进行创造性修复，对于极端破损可能与原始照片存在艺术性差异。'
   },
@@ -278,14 +278,14 @@ const features = [
     icon: 'fa-solid fa-wand-magic-sparkles',
     title: '拂尘 · 物理修复',
     shortTitle: '拂尘去瑕',
-    subtitle: '像文物修复师一样，智能识别并填补岁月的缺憾，抹去折痕与污渍。',
+    subtitle: '像文物修复师一样，智能识别并填补各类影像的缺憾，抹去折痕、污渍与噪点。',
     scenes: [
       '带有明显折痕、撕裂缝隙的老照片',
-      '表面有霉斑、咖啡渍或墨水的照片',
-      '扫描后带有大量灰尘噪点的底片'
+      '表面有霉斑、咖啡渍或墨水的现代照片',
+      '扫描后带有大量灰尘噪点的各类影像'
     ],
-    beforeImage: './assets/images/拂尘前.png', 
-    afterImage: './assets/images/拂尘后.jpg',
+    beforeImage: '/images/dustless_before.png', 
+    afterImage: '/images/dustless_after.jpg',
     demoDesc: '拖动滑块查看：AI 如何无痕填补复杂的纸张裂痕',
     limitations: '对于面部五官的严重物理缺失，建议修复后结合“真容”模块进一步处理。'
   },
@@ -297,14 +297,14 @@ const features = [
     icon: 'fa-solid fa-palette',
     title: '流光 · 色彩复苏',
     shortTitle: '流光上色',
-    subtitle: '基于深度学习的色彩分析，让记忆不再只有黑白灰，重现那个年代的温度。',
+    subtitle: '基于深度学习的色彩分析，让黑白影像焕发色彩，为各类影像重现真实色彩。',
     scenes: [
       '家里的黑白老照片或底片扫描件',
       '年代久远的黑白视频截图',
       '褪色严重的彩色照片（偏红/偏黄矫正）'
     ],
-    beforeImage: './assets/images/流光前.jpg', 
-    afterImage: './assets/images/流光后.jpg',
+    beforeImage: '/images/colorize_before.jpg', 
+    afterImage: '/images/colorize_after.jpg',
     demoDesc: '智能分析衣物材质与环境光，还原最接近历史真实的色彩',
     limitations: '提供“艺术”与“纪实”两种上色模式，以适应不同历史背景下对颜色的推测。'
   },
@@ -316,14 +316,14 @@ const features = [
     icon: 'fa-solid fa-mountain-sun',
     title: '清影 · 画质重构',
     shortTitle: '清影超清',
-    subtitle: '不仅是放大，更是重绘。利用生成式模型，让模糊的瞬间变得锐利清晰。',
+    subtitle: '不仅是放大，更是重绘。利用生成式模型，让各类模糊影像变得锐利清晰。',
     scenes: [
       '由于手抖或对焦失败导致的模糊照片',
       '早年间低像素翻盖手机拍摄的照片',
       '被微信/网络多次转发压缩的马赛克图'
     ],
-    beforeImage: './assets/images/清影前.png', 
-    afterImage: './assets/images/清影后.jpg',
+    beforeImage: '/images/qingying_before.png', 
+    afterImage: '/images/qingying_after.jpg',
     demoDesc: '重构发丝、衣物纹理等微小细节，分辨率瞬间提升 4 倍',
     limitations: '生成式模型对于极度模糊背景中的微小文字可能会产生推测偏差，但在静物与风景上表现极佳。'
   },
@@ -335,14 +335,14 @@ const features = [
     icon: 'fa-regular fa-face-smile',
     title: '真容 · 肖像精修',
     shortTitle: '真容精修',
-    subtitle: '穿越时空的凝视。专注于面部几何重建，找回亲人最清晰的模样。',
+    subtitle: '专注于面部几何重建，为各类人像照片找回最清晰的模样。',
     scenes: [
       '五官模糊不清的大合影（看不清脸）',
       '对焦不准的人像特写',
       '面部有大量噪点或轻微破损的照片'
     ],
-    beforeImage: './assets/images/真容前.png', 
-    afterImage: './assets/images/真容后.jpg',
+    beforeImage: '/images/zhenrong_before.png', 
+    afterImage: '/images/zhenrong_after.jpg',
     demoDesc: '专注于眼、鼻、嘴的结构重建，显著提升五官立体感',
     limitations: '仅针对面部区域生效。如果背景也很模糊，建议先使用"清影"再用"真容"。'
   },
@@ -354,11 +354,11 @@ const features = [
     icon: 'fa-solid fa-microphone',
     title: '留音 · 语音魔法',
     shortTitle: '留音语音',
-    subtitle: '让照片开口说话，赋予静态图像声音的力量。支持文本转语音和声音复活。',
+    subtitle: '让各类影像开口说话，赋予静态图像声音的力量。支持文本转语音和声音复活。',
     scenes: [
-      '为老照片添加语音描述，讲述背后故事',
+      '为各类照片添加语音描述，讲述背后故事',
       '基于少量语音样本克隆出相似的声音',
-      '为家庭相册制作有声回忆录'
+      '为各类相册制作有声回忆录'
     ],
     demoDesc: '提供文本转语音与声音复活双模式，补齐多模态修复的重要一环。',
     limitations: '声音复活功能需要提供清晰的参考音频样本，样本质量直接影响克隆保真度。'
@@ -371,9 +371,9 @@ const features = [
     icon: 'fa-solid fa-video',
     title: '灵动 · 人像复活',
     shortTitle: '灵动人像',
-    subtitle: '基于先进 AI 技术，赋予人像生动的表情和动作，重现当年的音容笑貌。',
+    subtitle: '基于先进 AI 技术，赋予各类人像生动的表情和动作，重现当年的音容笑貌。',
     scenes: [
-      '让老照片中的亲人动起来',
+      '让各类照片中的人物动起来',
       '为历史人物照片添加生动的表情',
       '制作个性化的动态回忆录'
     ],

@@ -1,0 +1,80 @@
+{
+	"pages": [
+		{
+			"path": "pages/login/login",
+			"style": {
+				"navigationStyle": "custom",
+				"navigationBarTitleText": ""
+			}
+		},
+		{
+			"path": "pages/workshop/workshop",
+			"style": {
+				"navigationBarTitleText": "修复工坊"
+			}
+		},
+		{
+			"path": "pages/gallery/gallery",
+			"style": {
+				"navigationBarTitleText": "时光图库"
+			}
+		},
+		{
+			"path": "pages/history/history",
+			"style": {
+				"navigationBarTitleText": "创作时光轴"
+			}
+		},
+		{
+			"path": "pages/help/help",
+			"style": {
+				"navigationBarTitleText": "使用指南"
+			}
+		},
+		{
+			"path": "pages/register/register",
+			"style": {
+				"navigationStyle": "custom",
+				"navigationBarTitleText": ""
+			}
+		},
+		{
+			"path": "pages/workshop/module",
+			"style": {
+				"navigationStyle": "custom",
+				"navigationBarTitleText": ""
+			}
+		}
+	],
+	"globalStyle": {
+		"navigationBarTextStyle": "black",
+		"navigationBarTitleText": "岁月笺影",
+		"navigationBarBackgroundColor": "#fbf8f1",
+		"backgroundColor": "#ffffff"
+	},
+	"tabBar": {
+		"custom": true,
+		"color": "#999999",
+		"selectedColor": "#b8945d",
+		"backgroundColor": "#ffffff",
+		"borderStyle": "white",
+		"list": [
+			{
+				"pagePath": "pages/workshop/workshop",
+				"text": "修复工坊"
+			},
+			{
+				"pagePath": "pages/gallery/gallery",
+				"text": "时光图库"
+			},
+			{
+				"pagePath": "pages/history/history",
+				"text": "创作时光轴"
+			},
+			{
+				"pagePath": "pages/help/help",
+				"text": "使用指南"
+			}
+		]
+	}
+}

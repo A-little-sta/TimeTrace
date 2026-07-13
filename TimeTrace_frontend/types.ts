@@ -31,6 +31,7 @@ export enum ModuleStep {
   VOICE = 'voice',
   LIVE_PORTRAIT = 'live_portrait',
   TIME_ENGINE = 'time_engine',
+  DIMENSION_SCULPTOR = 'dimension_sculptor',
 }
 
 export interface ModuleConfig {

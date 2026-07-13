@@ -10,8 +10,8 @@ interface BrushCanvasProps {
 
 const props = withDefaults(defineProps<BrushCanvasProps>(), {
   brushSize: 10,
-  brushColor: '#FF0000',
-  opacity: 0.6
+  brushColor: '#FF6B35',
+  opacity: 0.7
 });
 
 const emit = defineEmits<{
@@ -28,6 +28,14 @@ const originalImage = ref<HTMLImageElement | null>(null);
 const maskCanvas = ref<HTMLCanvasElement | null>(null);
 const maskCtx = ref<CanvasRenderingContext2D | null>(null);
 const localBrushSize = ref(props.brushSize);
+
+// 缩放和平移相关
+const scale = ref(1);
+const offsetX = ref(0);
+const offsetY = ref(0);
+const isDragging = ref(false);
+const lastTouchDistance = ref(0);
+const lastTouchCenter = ref({ x: 0, y: 0 });
 
 // 初始化画布
 onMounted(() => {
@@ -128,10 +136,10 @@ const handleMouseDown = (e: MouseEvent) => {
   
   if (mode.value === 'draw') {
     maskCtx.value.globalCompositeOperation = 'source-over';
-    maskCtx.value.strokeStyle = 'rgba(255, 255, 255, 1)';
+    maskCtx.value.strokeStyle = 'rgba(255, 107, 53, 1)';
   } else {
     maskCtx.value.globalCompositeOperation = 'destination-out';
-    maskCtx.value.strokeStyle = 'rgba(255, 255, 255, 1)';
+    maskCtx.value.strokeStyle = 'rgba(255, 107, 53, 1)';
   }
   
   maskCtx.value.beginPath();
@@ -169,6 +177,126 @@ const handleMouseLeave = () => {
   isDrawing.value = false;
   updateDisplay();
   emitMaskChange();
+};
+
+// 触摸开始事件
+const handleTouchStart = (e: TouchEvent) => {
+  if (!imageLoaded.value || !ctx.value || !maskCtx.value) return;
+  
+  // 阻止默认行为（如滚动）
+  e.preventDefault();
+  
+  // 如果是双指触摸，开始缩放
+  if (e.touches.length === 2) {
+    isDragging.value = true;
+    isDrawing.value = false;
+    
+    // 计算两指距离
+    const touch1 = e.touches[0];
+    const touch2 = e.touches[1];
+    lastTouchDistance.value = Math.hypot(
+      touch2.clientX - touch1.clientX,
+      touch2.clientY - touch1.clientY
+    );
+    
+    // 计算两指中点
+    lastTouchCenter.value = {
+      x: (touch1.clientX + touch2.clientX) / 2,
+      y: (touch1.clientY + touch2.clientY) / 2
+    };
+  } else if (e.touches.length === 1) {
+    // 单指触摸，开始绘制
+    isDrawing.value = true;
+    isDragging.value = false;
+    
+    const rect = canvasRef.value?.getBoundingClientRect();
+    if (!rect) return;
+    
+    const touch = e.touches[0];
+    const { scaleX, scaleY } = getCanvasScale();
+    
+    // 根据缩放比例调整坐标
+    const x = (touch.clientX - rect.left) * scaleX;
+    const y = (touch.clientY - rect.top) * scaleY;
+    
+    maskCtx.value.lineWidth = localBrushSize.value;
+    maskCtx.value.lineCap = 'round';
+    
+    if (mode.value === 'draw') {
+      maskCtx.value.globalCompositeOperation = 'source-over';
+      maskCtx.value.strokeStyle = 'rgba(255, 107, 53, 1)';
+    } else {
+      maskCtx.value.globalCompositeOperation = 'destination-out';
+      maskCtx.value.strokeStyle = 'rgba(255, 107, 53, 1)';
+    }
+    
+    maskCtx.value.beginPath();
+    maskCtx.value.moveTo(x, y);
+    
+    draw(x, y);
+  }
+};
+
+// 触摸移动事件
+const handleTouchMove = (e: TouchEvent) => {
+  if (!imageLoaded.value) return;
+  
+  e.preventDefault();
+  
+  // 双指缩放
+  if (e.touches.length === 2 && isDragging.value) {
+    const touch1 = e.touches[0];
+    const touch2 = e.touches[1];
+    
+    const currentDistance = Math.hypot(
+      touch2.clientX - touch1.clientX,
+      touch2.clientY - touch1.clientY
+    );
+    
+    const scaleFactor = currentDistance / lastTouchDistance.value;
+    const newScale = Math.min(Math.max(scale.value * scaleFactor, 1), 5); // 限制缩放范围 1-5 倍
+    
+    // 计算新的中心点
+    const currentCenter = {
+      x: (touch1.clientX + touch2.clientX) / 2,
+      y: (touch1.clientY + touch2.clientY) / 2
+    };
+    
+    // 调整偏移量以保持缩放中心点不变
+    offsetX.value += (currentCenter.x - lastTouchCenter.value.x) * (1 - newScale / scale.value);
+    offsetY.value += (currentCenter.y - lastTouchCenter.value.y) * (1 - newScale / scale.value);
+    
+    scale.value = newScale;
+    lastTouchDistance.value = currentDistance;
+    lastTouchCenter.value = currentCenter;
+    
+    updateDisplay();
+  } else if (e.touches.length === 1 && isDrawing.value) {
+    // 单指绘制
+    if (!ctx.value || !maskCtx.value) return;
+    
+    const rect = canvasRef.value?.getBoundingClientRect();
+    if (!rect) return;
+    
+    const touch = e.touches[0];
+    const { scaleX, scaleY } = getCanvasScale();
+    
+    const x = (touch.clientX - rect.left) * scaleX;
+    const y = (touch.clientY - rect.top) * scaleY;
+    
+    draw(x, y);
+  }
+};
+
+// 触摸结束事件
+const handleTouchEnd = () => {
+  isDrawing.value = false;
+  isDragging.value = false;
+  
+  if (imageLoaded.value) {
+    updateDisplay();
+    emitMaskChange();
+  }
 };
 
 // 绘制函数
@@ -211,11 +339,18 @@ const clearCanvas = () => {
   if (!maskCtx.value || !maskCanvas.value || !ctx.value || !originalImage.value) return;
   
   // 清除掩码画布
-  maskCtx.value.fillStyle = 'rgba(0, 0, 0, 0)';
-  maskCtx.value.fillRect(0, 0, maskCanvas.value.width, maskCanvas.value.height);
+  maskCtx.value.clearRect(0, 0, maskCanvas.value.width, maskCanvas.value.height);
   
-  // 重绘原始图片
+  // 重绘原始图片到主画布
   ctx.value.drawImage(originalImage.value, 0, 0);
+  
+  // 更新显示（确保清空后的状态正确显示）
+  updateDisplay();
+  
+  // 重置缩放和平移状态
+  scale.value = 1;
+  offsetX.value = 0;
+  offsetY.value = 0;
   
   emitMaskChange();
 };
@@ -253,15 +388,29 @@ const cleanup = () => {
 
 <template>
   <div class="brush-canvas-container relative">
-    <!-- 画布 -->
-    <canvas
-      ref="canvasRef"
-      @mousedown="handleMouseDown"
-      @mousemove="handleMouseMove"
-      @mouseup="handleMouseUp"
-      @mouseleave="handleMouseLeave"
-      class="cursor-crosshair"
-    ></canvas>
+    <!-- 缩放提示 -->
+    <div class="absolute top-2 left-2 bg-black/50 text-white text-xs px-2 py-1 rounded z-10">
+      {{ Math.round(scale * 100) }}%
+    </div>
+    
+    <!-- 画布容器（支持缩放） -->
+    <div class="canvas-wrapper overflow-auto touch-none" style="touch-action: none;">
+      <canvas
+        ref="canvasRef"
+        @mousedown="handleMouseDown"
+        @mousemove="handleMouseMove"
+        @mouseup="handleMouseUp"
+        @mouseleave="handleMouseLeave"
+        @touchstart="handleTouchStart"
+        @touchmove="handleTouchMove"
+        @touchend="handleTouchEnd"
+        class="cursor-crosshair touch-pan-y touch-pinch-zoom"
+        :style="{
+          transform: `scale(${scale}) translate(${offsetX}px, ${offsetY}px)`,
+          transformOrigin: '0 0'
+        }"
+      ></canvas>
+    </div>
     
     <!-- 加载状态 -->
     <div v-if="!imageLoaded" class="absolute inset-0 bg-gray-100 flex items-center justify-center">
@@ -329,14 +478,25 @@ const cleanup = () => {
   display: flex;
   flex-direction: column;
   align-items: center;
+  position: relative;
+  width: 100%;
+}
+
+.canvas-wrapper {
+  width: 100%;
+  max-height: 500px;
+  border: 1px solid #e5e7eb;
+  border-radius: 0.5rem;
+  background: #f9fafb;
+  overflow: auto;
+  touch-action: none;
 }
 
 canvas {
-  border: 1px solid #e5e7eb;
-  border-radius: 0.5rem;
+  display: block;
   max-width: 100%;
-  max-height: 600px;
-  object-fit: contain;
+  cursor: crosshair;
+  touch-action: none;
 }
 
 .controls {
@@ -344,5 +504,30 @@ canvas {
   justify-content: center;
   flex-wrap: wrap;
   gap: 1rem;
+}
+
+/* 移动端优化：增大按钮尺寸 */
+@media (max-width: 768px) {
+  .brush-canvas-container {
+    padding: 0;
+  }
+  
+  .canvas-wrapper {
+    max-height: 40vh;
+    border-radius: 0.25rem;
+  }
+  
+  .controls {
+    gap: 0.5rem;
+  }
+  
+  .controls button {
+    padding: 0.75rem 1rem;
+    font-size: 0.875rem;
+  }
+  
+  .controls input[type="range"] {
+    width: 32vw;
+  }
 }
 </style>

@@ -51,20 +51,93 @@ class ApiService {
   // --- Auth --- 
 
   async register(username: string, email: string, password: string) {
-    const response = await apiClient.post('/auth/register', {
-      username,
-      email,
-      password
-    });
-    return response.data;
+    try {
+      const response = await apiClient.post('/auth/register', {
+        username,
+        email,
+        password
+      });
+      return response.data;
+    } catch (error: any) {
+      // 友好的错误提示处理
+      if (error.response?.status === 400) {
+        const errorDetail = error.response.data?.detail || '';
+        
+        // 根据后端返回的具体错误信息提供友好的中文提示
+        // 优先检查用户名重复
+        if (errorDetail.includes('username') || errorDetail.includes('用户名') || errorDetail.includes('Username')) {
+          if (errorDetail.includes('already exists') || errorDetail.includes('存在') || errorDetail.includes('已存在')) {
+            throw new Error('该用户名已被使用，请尝试其他用户名');
+          } else {
+            throw new Error('用户名格式有误，请使用字母、数字或下划线');
+          }
+        }
+        // 然后检查邮箱重复
+        else if (errorDetail.includes('email') || errorDetail.includes('邮箱') || errorDetail.includes('Email')) {
+          if (errorDetail.includes('already exists') || errorDetail.includes('存在') || errorDetail.includes('已注册')) {
+            throw new Error('该邮箱已被注册，请直接登录或找回密码');
+          } else {
+            throw new Error('邮箱格式不正确，请检查后重试');
+          }
+        }
+        // 密码相关错误
+        else if (errorDetail.includes('password') || errorDetail.includes('密码') || errorDetail.includes('Password')) {
+          throw new Error('密码强度不足，请使用8位以上包含字母和数字的组合');
+        }
+        // 通用已存在错误（可能是用户名或邮箱）
+        else if (errorDetail.includes('already exists') || errorDetail.includes('存在') || errorDetail.includes('已注册')) {
+          throw new Error('该账户信息已存在，请检查用户名和邮箱');
+        }
+        else {
+          throw new Error('注册信息有误，请检查输入格式');
+        }
+      } else if (error.response?.status === 422) {
+        throw new Error('输入数据格式不正确，请检查后重试');
+      } else if (error.code === 'NETWORK_ERROR' || error.message?.includes('Network')) {
+        throw new Error('网络连接失败，请检查网络后重试');
+      } else if (error.response?.status >= 500) {
+        throw new Error('服务器开小差了，请稍后再试');
+      } else {
+        throw new Error('注册失败，请稍后重试');
+      }
+    }
   }
 
   async login(username: string, password: string) {
-    const response = await apiClient.post('/auth/login', 
-      new URLSearchParams({ username, password }),
-      { headers: { 'Content-Type': 'application/x-www-form-urlencoded' } }
-    );
-    return response.data;
+    try {
+      const response = await apiClient.post('/auth/login', 
+        new URLSearchParams({ username, password }),
+        { headers: { 'Content-Type': 'application/x-www-form-urlencoded' } }
+      );
+      return response.data;
+    } catch (error: any) {
+      // 友好的错误提示处理
+      if (error.response?.status === 401) {
+        const errorDetail = error.response.data?.detail || '';
+        
+        // 根据后端返回的具体错误信息提供友好的中文提示
+        if (errorDetail.includes('Incorrect username or password') || 
+            errorDetail.includes('用户名或密码错误') || 
+            errorDetail.includes('密码错误') ||
+            errorDetail.includes('incorrect')) {
+          throw new Error('用户名或密码错误，请检查后重试');
+        } else if (errorDetail.includes('User not found') || 
+                   errorDetail.includes('用户不存在') || 
+                   errorDetail.includes('not found')) {
+          throw new Error('该用户不存在，请检查用户名是否正确');
+        } else {
+          throw new Error('登录失败，用户名或密码错误');
+        }
+      } else if (error.response?.status === 400) {
+        throw new Error('登录信息格式有误，请检查用户名和密码');
+      } else if (error.code === 'NETWORK_ERROR' || error.message?.includes('Network')) {
+        throw new Error('网络连接失败，请检查网络后重试');
+      } else if (error.response?.status >= 500) {
+        throw new Error('服务器开小差了，请稍后再试');
+      } else {
+        throw new Error('登录失败，请稍后重试');
+      }
+    }
   }
 
   async getCurrentUser(token: string) {

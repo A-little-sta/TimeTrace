@@ -5,7 +5,7 @@ import subprocess
 import requests
 import shutil
 from sqlalchemy import func
-from app.core.config import settings
+from app.core.config import settings, ENV_MAP
 from app.db import SessionLocal, get_db
 from app.db.models import Task, TaskStatus as DBTaskStatus, Photo, Mask, History
 from app.worker.runner import run_module_task
@@ -35,16 +35,46 @@ def process_repair_task(task_id: int):
         
         logger.info(f"任务 {task_id} 信息: 照片ID={task.photo_id}, 任务类型={task.task_type}, 步骤={task.steps}")
         
-        # 获取照片原始路径
-        photo = db.query(Photo).filter(Photo.id == task.photo_id).first()
-        if not photo:
-            raise ValueError(f"照片不存在: {task.photo_id}")
+        # 获取照片原始路径（TTS等音频任务可能没有photo_id）
+        photo = None
+        if task.photo_id:
+            photo = db.query(Photo).filter(Photo.id == task.photo_id).first()
+            if not photo:
+                raise ValueError(f"照片不存在: {task.photo_id}")
+            logger.info(f"获取到照片: ID={photo.id}, 路径={photo.original_path}")
         
-        logger.info(f"获取到照片: ID={photo.id}, 路径={photo.original_path}")
-        
-        # 检查照片文件是否存在
-        if not os.path.exists(photo.original_path):
-            raise ValueError(f"照片文件不存在: {photo.original_path}")
+        # 根据是否有照片确定初始输入路径
+        if photo:
+            # 有照片：使用照片路径作为输入
+            normalized_path = photo.original_path.replace("\\", "/")
+            
+            # 如果路径是相对路径，转换为绝对路径
+            if not os.path.isabs(normalized_path):
+                project_root = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+                normalized_path = os.path.join(project_root, normalized_path)
+            
+            logger.info(f"检查照片文件路径: 原始路径={photo.original_path}, 标准化路径={normalized_path}")
+            
+            if not os.path.exists(normalized_path):
+                # 尝试另一种路径格式（如果路径包含static/uploads）
+                if "static/uploads" in normalized_path:
+                    relative_path = normalized_path.split("static/uploads")[-1].lstrip("/\\")
+                    alternative_path = os.path.join(project_root, "static", "uploads", relative_path)
+                    logger.info(f"尝试替代路径: {alternative_path}")
+                    
+                    if os.path.exists(alternative_path):
+                        normalized_path = alternative_path
+                        logger.info(f"使用替代路径成功: {normalized_path}")
+                    else:
+                        raise ValueError(f"照片文件不存在: {photo.original_path} (标准化后: {normalized_path})")
+                else:
+                    raise ValueError(f"照片文件不存在: {photo.original_path} (标准化后: {normalized_path})")
+            
+            current_input_path = os.path.abspath(normalized_path)
+        else:
+            # 无照片（如TTS任务）：使用空字符串或特殊标记
+            current_input_path = ""
+            logger.info(f"无照片任务（如TTS），将使用参数中的输入信息")
         
         # 更新任务状态为处理中
         task.status = DBTaskStatus.PROCESSING
@@ -60,7 +90,15 @@ def process_repair_task(task_id: int):
         logger.info(f"任务 {task_id} 将执行 {len(steps)} 个修复步骤: {steps}")
         
         # 执行多步骤修复
-        current_input_path = os.path.abspath(photo.original_path)
+        # 修复：使用前面已经标准化处理过的 normalized_path，基于项目根目录拼接
+        # 而不是直接用 os.path.abspath(photo.original_path)（依赖工作目录，跨平台会出错）
+        if photo:
+            project_root = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+            current_input_path = os.path.join(project_root, normalized_path.replace("\\", "/"))
+            current_input_path = os.path.normpath(current_input_path)
+        else:
+            current_input_path = ""
+        
         all_results = []
         
         for step_index, step_type in enumerate(steps):
@@ -99,7 +137,7 @@ def process_repair_task(task_id: int):
                     logger.info(f"没有自定义掩码，使用自动修复模式")
                 
                 # 设置拂尘修复环境变量
-                os.environ["DUSTLESS_PYTHON"] = settings.ENV_MAP.get("dustless", "python")
+                os.environ["DUSTLESS_PYTHON"] = ENV_MAP.get("dustless", "python")
                 
                 # 获取修复相关参数
                 repair_type = "scratch"  # 默认划痕修复
@@ -157,10 +195,72 @@ def process_repair_task(task_id: int):
             elif step_type == "voice":
                 # 声音克隆（未来功能）
                 logger.info(f"启动声音克隆修复: {current_input_path}")
-                # 按需导入流音模块
                 from modules.voice import repair_voice
                 result_path = repair_voice(current_input_path)
                 logger.info(f"声音克隆修复完成，结果路径: {result_path}")
+            
+            elif step_type == "tts":
+                # 文本转语音（TTS）
+                logger.info(f"启动文本转语音任务")
+                
+                try:
+                    from app.worker.voice_manager import execute_voice_task
+                    import uuid
+                    
+                    # 执行TTS任务
+                    result = execute_voice_task("generate", task.params if task.params else {})
+                    
+                    if not result.get("success"):
+                        raise Exception(result.get("error", "TTS生成失败"))
+                    
+                    # 保存音频文件
+                    audio_filename = f"tts_{uuid.uuid4()}.wav"
+                    audio_dir = os.path.join(os.getcwd(), "static", "uploads", "audios")
+                    os.makedirs(audio_dir, exist_ok=True)
+                    
+                    audio_path = os.path.join(audio_dir, audio_filename)
+                    with open(audio_path, "wb") as f:
+                        f.write(result.get("data", b""))
+                    
+                    # 返回相对路径
+                    result_path = os.path.join("static", "uploads", "audios", audio_filename).replace(os.path.sep, '/')
+                    logger.info(f"TTS任务完成，音频文件: {result_path}")
+                    
+                except Exception as e:
+                    logger.error(f"TTS任务执行失败: {e}", exc_info=True)
+                    raise
+            
+            elif step_type == "voice_clone":
+                # 声音克隆（基于参考音频）
+                logger.info(f"启动声音克隆任务")
+                
+                try:
+                    from app.worker.voice_manager import execute_voice_task
+                    import uuid
+                    
+                    # 执行声音克隆任务
+                    result = execute_voice_task("generate", task.params if task.params else {})
+                    
+                    if not result.get("success"):
+                        raise Exception(result.get("error", "声音克隆失败"))
+                    
+                    # 保存音频文件
+                    audio_filename = f"voice_clone_{uuid.uuid4()}.wav"
+                    audio_dir = os.path.join(os.getcwd(), "static", "uploads", "audios")
+                    os.makedirs(audio_dir, exist_ok=True)
+                    
+                    audio_path = os.path.join(audio_dir, audio_filename)
+                    with open(audio_path, "wb") as f:
+                        f.write(result.get("data", b""))
+                    
+                    # 返回相对路径
+                    result_path = os.path.join("static", "uploads", "audios", audio_filename).replace(os.path.sep, '/')
+                    logger.info(f"声音克隆任务完成，音频文件: {result_path}")
+                    
+                except Exception as e:
+                    logger.error(f"声音克隆任务执行失败: {e}", exc_info=True)
+                    raise
+            
             elif step_type == "liveportrait" or step_type == "liveportrait_video":
                 # 灵动·人像复活（视频驱动模式 + 音频合并）
                 logger.info(f"启动灵动·人像复活修复: {current_input_path}")
@@ -420,7 +520,7 @@ def process_repair_task(task_id: int):
                 task_id=task.id,
                 media_type=media_type,  # 根据操作类型正确设置媒体类型
                 operation_type=step_type,
-                input_path=photo.original_path,
+                input_path=photo.original_path if photo else (task.params.get("text", "")[:100] if task.params else ""),  # TTS等任务使用文本作为输入
                 result_path=result_path,
                 params=task.params
             )
@@ -431,10 +531,9 @@ def process_repair_task(task_id: int):
             # 将当前步骤的结果作为下一步的输入
             current_input_path = result_path
         
-        # 更新任务状态为完成
-        task.status = DBTaskStatus.COMPLETED
-        
         # 获取static目录的绝对路径
+        # 【注意】task.status = COMPLETED 会移动到 db.commit() 之前，
+        # 避免前端轮询时读到 status=completed 但 result_path 还未设置的竞态条件
         static_dir = os.path.abspath(os.path.join(os.getcwd(), 'static'))
         logger.info(f"Static目录的绝对路径：{static_dir}")
         
@@ -538,6 +637,8 @@ def process_repair_task(task_id: int):
             
             task.step_results = relative_step_results
         
+        # 所有字段设置完成后，再更新状态为完成（避免前端轮询到 status=completed 但 result_path 为空的竞态条件）
+        task.status = DBTaskStatus.COMPLETED
         task.completed_at = db.query(func.now()).scalar()
         db.commit()
         

@@ -14,36 +14,36 @@ export const SLIDES = [
     id: 1,
     title: '拂尘 · 物理修复',
     desc: '智能去除照片中的划痕、污渍和瑕疵，恢复照片原始洁净。',
-    before: './assets/images/拂尘前.png',
-    after: './assets/images/拂尘后.jpg'
+    before: '/images/dustless_before.png',
+    after: '/images/dustless_after.jpg'
   },
   {
     id: 2,
     title: '拂尘 · 去噪修复',
     desc: '基于UHDM超高清降噪算法，智能去除摩尔纹和图像噪声，让照片恢复纯净清晰。',
-    before: './assets/images/降噪前.jpg',
-    after: './assets/images/降噪后.jpg'
+    before: '/images/denoise_before.jpg',
+    after: '/images/denoise_after.jpg'
   },
   {
     id: 3,
     title: '流光 · 色彩复苏',
     desc: '为黑白照片注入自然色彩，重现那个年代的鲜活记忆。',
-    before: './assets/images/流光前.jpg',
-    after: './assets/images/流光后.jpg'
+    before: '/images/colorize_before.jpg',
+    after: '/images/colorize_after.jpg'
   },
   {
     id: 4,
     title: '清影 · 画质重构',
     desc: '智能提升照片清晰度，让模糊的细节变得锐利清晰。',
-    before: './assets/images/清影前.png',
-    after: './assets/images/清影后.jpg'
+    before: '/images/qingying_before.png',
+    after: '/images/qingying_after.jpg'
   },
   {
     id: 5,
     title: '真容 · 肖像精修',
     desc: '专业修复人物面部细节，找回亲人最清晰真实的模样。',
-    before: './assets/images/真容前.png',
-    after: './assets/images/真容后.jpg'
+    before: '/images/zhenrong_before.png',
+    after: '/images/zhenrong_after.jpg'
   }
 ];
 
@@ -84,6 +84,10 @@ const LivePortraitIcon = h('svg', { xmlns: "http://www.w3.org/2000/svg", fill: "
 const TimeEngineIcon = h('svg', { xmlns: "http://www.w3.org/2000/svg", fill: "none", viewBox: "0 0 24 24", strokeWidth: 1.2, stroke: "currentColor", class: "w-6 h-6" }, [
     h('path', { strokeLinecap: "round", strokeLinejoin: "round", d: "M12 6v6h4.5m4.5 0a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" }),
     h('path', { strokeLinecap: "round", strokeLinejoin: "round", d: "M12 2.25c-5.385 0-9.75 4.365-9.75 9.75s4.365 9.75 9.75 9.75 9.75-4.365 9.75-9.75S17.385 2.25 12 2.25Zm0 18c-4.962 0-9-4.038-9-9s4.038-9 9-9 9 4.038 9 9-4.038 9-9 9Z" })
+]);
+
+const DimensionSculptorIcon = h('svg', { xmlns: "http://www.w3.org/2000/svg", fill: "none", viewBox: "0 0 24 24", strokeWidth: 1.2, stroke: "currentColor", class: "w-6 h-6" }, [
+    h('path', { strokeLinecap: "round", strokeLinejoin: "round", d: "M21 7.5l-9-5.25L3 7.5m18 0l-9 5.25m9-5.25v9l-9 5.25M3 7.5l9 5.25M3 7.5v9l9 5.25m0-9v9" })
 ]);
 
 export const MODULES: ModuleConfig[] = [
@@ -226,6 +230,26 @@ export const MODULES: ModuleConfig[] = [
       'Flux.1 Pro超强模型',
       'ComfyUI节点工作流',
       '智能多维度修复'
+    ]
+  },
+  {
+    id: ModuleStep.DIMENSION_SCULPTOR,
+    name: '维度重塑',
+    description: '2D照片转3D模型，上传照片一键生成可交互的立体影像。',
+    color: 'bg-amber-100 text-amber-700',
+    icon: DimensionSculptorIcon,
+    iconBg: 'bg-amber-100',
+    iconColor: 'text-amber-700',
+    iconName: 'fa-solid fa-cube',
+    emotionalTexts: [
+      '正在从照片重建立体世界...',
+      'AI正在推算空间结构...',
+      '让平面影像跃然而出...'
+    ],
+    technicalTexts: [
+      'Tripo3D深度学习引擎',
+      '单帧图像3D重建',
+      'PBR物理渲染材质'
     ]
   },
 ];

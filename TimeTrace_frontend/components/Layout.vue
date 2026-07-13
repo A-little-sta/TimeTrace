@@ -11,9 +11,31 @@ const route = useRoute();
 const router = useRouter(); // needed for navigation
 const authStore = useAuthStore();
 
+const sidebarOpen = ref(false);
+const sidebarHidden = ref(false);
+
+const toggleSidebar = () => {
+  sidebarOpen.value = !sidebarOpen.value;
+};
+
+const closeSidebar = () => {
+  sidebarOpen.value = false;
+};
+
+// 处理侧边栏隐藏事件（来自 History.vue 的图片详情）
+const handleSidebarHide = (event: CustomEvent) => {
+  sidebarHidden.value = event.detail.hide;
+};
+
 const isActive = (path: string) => {
   if (path === '/') return route.path === '/';
   return route.path.startsWith(path);
+};
+
+// 检查模块是否开放（所有模块都已开放）
+const isModuleOpen = (moduleId: string) => {
+  // 所有模块都已开放
+  return true;
 };
 
 const navigateTo = (path: string) => {
@@ -23,6 +45,19 @@ const navigateTo = (path: string) => {
     } else {
         router.push(path);
     }
+};
+
+// 处理模块点击
+const handleModuleClick = (moduleId: string) => {
+  if (isModuleOpen(moduleId)) {
+    navigateTo(`/workshop/${moduleId}`);
+  } else {
+    // 显示未开放提示
+    const moduleName = MODULES.find(m => m.id === moduleId)?.name || '该功能';
+    alert(`${moduleName}功能正在开发中，敬请期待！`);
+    // 仍然允许导航到页面，但显示提示
+    navigateTo(`/workshop/${moduleId}`);
+  }
 };
 
 const handleLogout = () => {
@@ -41,29 +76,70 @@ const handleNotification = (event: CustomEvent) => {
 onMounted(() => {
   // 监听通知事件
   window.addEventListener('time_trace_notification', handleNotification);
+  // 监听侧边栏隐藏事件
+  window.addEventListener('time_trace_hide_sidebar', handleSidebarHide);
 });
 
 onUnmounted(() => {
   // 移除事件监听器
   window.removeEventListener('time_trace_notification', handleNotification);
+  // 移除侧边栏隐藏事件监听器
+  window.removeEventListener('time_trace_hide_sidebar', handleSidebarHide);
 });
 </script>
 
 <template>
   <div class="flex h-screen w-full bg-background text-gray-800 font-sans overflow-hidden">
+    <!-- 手机端遮罩层 -->
+    <div 
+      v-if="sidebarOpen" 
+      class="fixed inset-0 bg-black/50 z-30 lg:hidden transition-opacity duration-300"
+      @click="closeSidebar"
+    ></div>
+
+    <!-- 手机端顶部导航栏 -->
+    <div class="lg:hidden fixed top-0 left-0 right-0 h-14 bg-white/90 backdrop-blur-md border-b border-primary-100/50 z-20 flex items-center px-4 shadow-sm">
+      <button @click="toggleSidebar" class="w-10 h-10 flex items-center justify-center rounded-xl hover:bg-gray-100 transition">
+        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-6 h-6 text-gray-700">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M3.75 6.75h16.5M3.75 12h16.5m-16.5 5.25h16.5" />
+        </svg>
+      </button>
+      <div class="flex items-center gap-2 ml-3">
+        <div class="w-7 h-7 rounded-full bg-primary-400 flex items-center justify-center text-white shadow-sm">
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-4 h-4">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" />
+          </svg>
+        </div>
+        <h1 class="text-lg font-serif-title font-bold tracking-tight text-gray-900">岁月笺影</h1>
+      </div>
+    </div>
+
     <!-- Sidebar -->
-    <aside class="w-72 bg-white/80 backdrop-blur-md border-r border-primary-100/50 flex flex-col flex-shrink-0 z-20 shadow-[4px_0_30px_rgba(207,176,123,0.1)]">
+    <aside 
+      :class="[
+        'fixed lg:static inset-y-0 left-0 w-72 bg-white/80 backdrop-blur-md border-r border-primary-100/50 flex flex-col flex-shrink-0 z-40 lg:z-20 shadow-[4px_0_30px_rgba(207,176,123,0.1)] transition-all duration-300 ease-in-out overflow-y-auto',
+        sidebarOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0',
+        sidebarHidden ? 'pointer-events-none' : ''
+      ]"
+    >
       <div class="p-8 pb-4">
-        <div class="flex flex-col gap-1 mb-10">
-          <div class="flex items-center gap-3">
-            <div class="w-10 h-10 rounded-full bg-primary-400 flex items-center justify-center text-white shadow-lg shadow-primary-400/40">
-              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-6 h-6">
-                <path stroke-linecap="round" stroke-linejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" />
-              </svg>
+        <div class="flex items-center justify-between mb-10">
+          <div class="flex flex-col gap-1">
+            <div class="flex items-center gap-3">
+              <div class="w-10 h-10 rounded-full bg-primary-400 flex items-center justify-center text-white shadow-lg shadow-primary-400/40">
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-6 h-6">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" />
+                </svg>
+              </div>
+              <h1 class="text-2xl font-serif-title font-bold tracking-tight text-gray-900">岁月笺影</h1>
             </div>
-            <h1 class="text-2xl font-serif-title font-bold tracking-tight text-gray-900">岁月笺影</h1>
+            <p class="text-xs text-primary-600/80 font-medium tracking-widest pl-14 uppercase">TimeTrace</p>
           </div>
-          <p class="text-xs text-primary-600/80 font-medium tracking-widest pl-14 uppercase">TimeTrace</p>
+          <button @click="closeSidebar" class="lg:hidden w-8 h-8 flex items-center justify-center rounded-lg hover:bg-gray-100 transition">
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5 text-gray-500">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
         </div>
 
         <!-- Navigation Links -->
@@ -146,23 +222,18 @@ onUnmounted(() => {
         <!-- Modules List -->
         <div class="space-y-2">
           <template v-for="module in MODULES" :key="module.id">
-            <div v-if="module.isComingSoon" class="flex items-center gap-3 px-4 py-3 rounded-xl text-gray-400 cursor-not-allowed opacity-60">
-                <span class="scale-90 grayscale flex items-center justify-center w-5 h-5">
-                    <component :is="module.icon" />
-                </span>
-                <span class="font-sans text-sm">{{ module.name.split(' ')[0] }}</span>
-                <span class="ml-auto text-[10px] uppercase tracking-wider font-bold border border-gray-300 px-1.5 py-0.5 rounded text-gray-400">Soon</span>
-            </div>
             <div 
-                v-else
-                @click="navigateTo(`/workshop/${module.id}`)"
+                @click="handleModuleClick(module.id)"
                 :class="[
                     'flex items-center gap-3 rounded-xl transition-all duration-300 group relative overflow-hidden cursor-pointer',
                     module.isCore ? 'nav-item-time-engine mt-4 mb-2' : 'px-4 py-3',
-                    isActive(`/workshop/${module.id}`) && !module.isCore ? 'bg-gradient-to-r from-primary-400/20 to-primary-400/5 text-primary-800 font-medium shadow-sm' : 'text-gray-500 hover:bg-gray-100 hover:text-gray-900'
+                    isActive(`/workshop/${module.id}`) && !module.isCore ? 'bg-gradient-to-r from-primary-400/20 to-primary-400/5 text-primary-800 font-medium shadow-sm' : 
+                    isModuleOpen(module.id) ? 'text-gray-500 hover:bg-gray-100 hover:text-gray-900' : 'text-gray-400 hover:bg-gray-50'
                 ]"
             >
-                <span :class="['transition-transform duration-300 flex items-center justify-center w-5 h-5', isActive(`/workshop/${module.id}`) ? 'scale-110 text-primary-600' : 'group-hover:scale-110']">
+                <span :class="['transition-transform duration-300 flex items-center justify-center w-5 h-5', 
+                    isActive(`/workshop/${module.id}`) ? 'scale-110 text-primary-600' : 
+                    isModuleOpen(module.id) ? 'group-hover:scale-110' : 'scale-90 grayscale group-hover:scale-100']">
                      <component :is="module.icon" />
                 </span>
                 <span class="font-sans text-sm tracking-wide z-10">{{ module.name.split(' ')[0] }}</span>
@@ -190,7 +261,7 @@ onUnmounted(() => {
     </aside>
 
     <!-- Main Content -->
-    <main class="flex-1 overflow-y-auto relative bg-background scroll-smooth">
+    <main class="flex-1 overflow-y-auto relative bg-background scroll-smooth pt-14 lg:pt-0">
       <div class="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-transparent via-primary-300 to-transparent opacity-50 z-10 pointer-events-none"></div>
       <router-view></router-view>
     </main>
@@ -253,5 +324,17 @@ onUnmounted(() => {
   100% {
     transform: rotate(360deg);
   }
+}
+
+/* 隐藏侧边栏滚动条 - 保持滚动功能但隐藏滚动条 */
+aside::-webkit-scrollbar {
+  width: 0;
+  height: 0;
+  background: transparent;
+}
+
+aside {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
 }
 </style>
